@@ -1,6 +1,6 @@
 require('dotenv').config();
-const Sequelize = require('sequelize').Sequelize;
 const pg = require('pg');
+const Sequelize = require('sequelize').Sequelize;
 
 // const sequelize = new Sequelize('BedsAccomodation', 'postgres', 'HsmOnline', {
 //     host: 'localhost',
