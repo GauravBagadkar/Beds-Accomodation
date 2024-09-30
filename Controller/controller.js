@@ -1,7 +1,7 @@
 const db = require('../Config/dbConfig');
 const { Sequelize } = require('sequelize');
 const { Op } = require('sequelize');
-
+// PIKACHU
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const ExcelJS = require('exceljs');
 //const PDFDocument = require('pdfkit');
