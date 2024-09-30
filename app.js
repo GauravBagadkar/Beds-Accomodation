@@ -8,7 +8,7 @@ dbConfig.sequelize.sync({ force: false });
 app.use(express.json());
 
 const routes = require('./Routes/route');
-app.use('/', routes);
+app.use('/api', routes);
 
 app.use((err, req, res, next) => {
     console.log(err.message);

@@ -1,10 +1,10 @@
 const db = require('../Config/dbConfig');
 const { Sequelize } = require('sequelize');
 const { Op } = require('sequelize');
-// PIKACHU
+
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const ExcelJS = require('exceljs');
-//const PDFDocument = require('pdfkit');
+
 const fs = require('fs');
 const moment = require('moment');
 const { validationResult } = require("express-validator");
@@ -375,11 +375,11 @@ exports.searchName = async (req, res) => {
 
 // Get Booking history by month :-
 exports.getBookingsByMonth = async (req, res) => {
+    const year = moment().year();
     try {
-        const { month } = req.body;
-        const year = moment().year();
+        const { month, year } = req.body;
 
-        if (!month) {
+        if (!month || !year) {
             return res.status(400).json({ success: 0, message: "Month is required in query parameter" });
         }
 
