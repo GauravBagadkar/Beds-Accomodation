@@ -27,7 +27,7 @@ app.use((req, res, next) => {
 });
 
 const routes = require('./Routes/route');
-app.use('/', routes);// /api
+app.use('/api', routes);// /api
 
 app.use((err, req, res, next) => {
     console.log(err.message);
