@@ -5,6 +5,8 @@ const { Op } = require('sequelize');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const ExcelJS = require('exceljs');
 
+const transporter = require("../Config/nodemailerConfig");
+
 const fs = require('fs');
 const moment = require('moment');
 const { validationResult } = require("express-validator");
@@ -164,6 +166,22 @@ exports.bookingBeds = async (req, res) => {
 
         res.status(200).json({ success: 1, data: booking, message: "Booking Completed" });
 
+        // send mail with defined transport object
+        const info = await transporter.sendMail({
+            from: 'bloodyindiansparrow@gmail.com', // sender address
+            to: employee.email, // list of receivers
+            subject: "Beds Accomodation Mail :- ",
+
+            html: `<b>${employee.name} your allotted bed is :- </b><br>` +
+
+                `Room Number is : ${room.roomNumber} and Bed Number is : ${bed.bedNumber}<br>` +
+
+                `You are alloted from date : ${loggedInDate} to date : ${loggedOutDate}<br>` +
+
+                `If you did not request this, please ignore this.<br>`,
+        });
+        console.log("Email Sent:%s", info.messageId);
+
     } catch (error) {
         console.log(error);
         res.status(400).json({ message: error.message });
@@ -316,6 +334,22 @@ exports.bookToVacantBed = async (req, res) => {
         });
 
         res.status(200).json({ success: 1, message: 'Bed successfully vacated and loggedOutDate updated' });
+
+        // // send mail with defined transport object
+        // const info = await transporter.sendMail({
+        //     from: 'bloodyindiansparrow@gmail.com', // sender address
+        //     to: employee.email, // list of receivers
+        //     subject: "Beds Accomodation Mail :- ",
+
+        //     html: `<b>${employee.name} your allotted bed is :- </b>\n`
+
+        //         + `Room Number is : ${room.roomNumber} and Bed Number is : ${bed.bedNumber}\n`
+
+        //         + `If you did not request this, please ignore this.\n`,
+        // });
+        // console.log("Email Sent:%s", info.messageId);
+
+
     } catch (error) {
         console.log(error);
         res.status(400).json({ success: 0, message: error.message });
