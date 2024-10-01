@@ -333,22 +333,30 @@ exports.bookToVacantBed = async (req, res) => {
             where: { id: bedId }
         });
 
+        // Fetch employee details from the booking
+        const employee = await Employee.findOne({
+            where: { id: booking.empId }
+        });
+
+        if (!employee) {
+            return res.status(404).json({ success: 0, message: 'Employee not found' });
+        }
+
+        // send mail with defined transport object
+        const info = await transporter.sendMail({
+            from: 'bloodyindiansparrow@gmail.com', // sender address
+            to: employee.email, // list of receivers
+            subject: "Beds Accomodation Mail :- ",
+
+            html: `<b>Dear ${employee.name},</b><br><br>` +
+                `Your bed with Room Number: ${booking.roomNumber} and Bed Number: ${booking.bedNumber} has been vacated.<br>` +
+                `The bed was vacated on: ${currentDate.toDateString()}<br><br>` +
+                `If you have any questions, please contact us.<br><br>` +
+                `Regards,<br>Accommodation Team`,
+        });
+        console.log("Email Sent:%s", info.messageId);
+
         res.status(200).json({ success: 1, message: 'Bed successfully vacated and loggedOutDate updated' });
-
-        // // send mail with defined transport object
-        // const info = await transporter.sendMail({
-        //     from: 'bloodyindiansparrow@gmail.com', // sender address
-        //     to: employee.email, // list of receivers
-        //     subject: "Beds Accomodation Mail :- ",
-
-        //     html: `<b>${employee.name} your allotted bed is :- </b>\n`
-
-        //         + `Room Number is : ${room.roomNumber} and Bed Number is : ${bed.bedNumber}\n`
-
-        //         + `If you did not request this, please ignore this.\n`,
-        // });
-        // console.log("Email Sent:%s", info.messageId);
-
 
     } catch (error) {
         console.log(error);
