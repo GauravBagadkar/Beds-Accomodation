@@ -1,13 +1,14 @@
 const db = require('../Config/dbConfig');
 const { Sequelize } = require('sequelize');
 const { Op } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
 
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const ExcelJS = require('exceljs');
 
 const transporter = require("../Config/nodemailerConfig");
 
-const fs = require('fs');
 const moment = require('moment');
 const { validationResult } = require("express-validator");
 const filterData = require("filter-data");
@@ -143,7 +144,6 @@ exports.bookingBeds = async (req, res) => {
         if (!room) {
             return res.status(404).json({ message: "Room not found for the selected bed" });
         }
-        // const room = await Rooms.findOne({ where: { id: bedId } });
 
         // Create booking
         const booking = await Booking.create({
@@ -164,23 +164,28 @@ exports.bookingBeds = async (req, res) => {
             { where: { id: bedId } }
         );
 
-        res.status(200).json({ success: 1, data: booking, message: "Booking Completed" });
+        // Read the HTML template file
+        const filePath = path.join(__dirname, "../Public/booking.html");
+        let htmlContent = fs.readFileSync(filePath, 'utf8');
+
+        // Replace placeholders in the HTML file with dynamic data
+        htmlContent = htmlContent
+            .replace('${employee.name}', employee.name)
+            .replace('${booking.roomNumber}', booking.roomNumber)
+            .replace('${booking.bedNumber}', booking.bedNumber)
+            .replace('${loggedInDate}', loggedInDate)
+            .replace('${loggedOutDate}', loggedOutDate);
 
         // send mail with defined transport object
         const info = await transporter.sendMail({
             from: 'bloodyindiansparrow@gmail.com', // sender address
             to: employee.email, // list of receivers
             subject: "Beds Accomodation Mail :- ",
-
-            html: `<b>${employee.name} your allotted bed is :- </b><br>` +
-
-                `Room Number is : ${room.roomNumber} and Bed Number is : ${bed.bedNumber}<br>` +
-
-                `You are alloted from date : ${loggedInDate} to date : ${loggedOutDate}<br>` +
-
-                `If you did not request this, please ignore this.<br>`,
+            html: htmlContent
         });
         console.log("Email Sent:%s", info.messageId);
+
+        res.status(200).json({ success: 1, data: booking, message: "Booking Completed" });
 
     } catch (error) {
         console.log(error);
@@ -342,17 +347,24 @@ exports.bookToVacantBed = async (req, res) => {
             return res.status(404).json({ success: 0, message: 'Employee not found' });
         }
 
+        // Read the HTML template file
+        const filePath = path.join(__dirname, "../Public/vacant.html");
+        let htmlContent = fs.readFileSync(filePath, 'utf8');
+
+        // Replace placeholders in the HTML file with dynamic data
+        htmlContent = htmlContent
+            .replace('${employee.name}', employee.name)
+            .replace('${booking.roomNumber}', booking.roomNumber)
+            .replace('${booking.bedNumber}', booking.bedNumber)
+            .replace('${currentDate.toDateString()}', currentDate.toDateString());
+
         // send mail with defined transport object
         const info = await transporter.sendMail({
             from: 'bloodyindiansparrow@gmail.com', // sender address
             to: employee.email, // list of receivers
             subject: "Beds Accomodation Mail :- ",
+            html: htmlContent
 
-            html: `<b>Dear ${employee.name},</b><br><br>` +
-                `Your bed with Room Number: ${booking.roomNumber} and Bed Number: ${booking.bedNumber} has been vacated.<br>` +
-                `The bed was vacated on: ${currentDate.toDateString()}<br><br>` +
-                `If you have any questions, please contact us.<br><br>` +
-                `Regards,<br>Accommodation Team`,
         });
         console.log("Email Sent:%s", info.messageId);
 

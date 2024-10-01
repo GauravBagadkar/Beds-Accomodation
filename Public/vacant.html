@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accommodation Notice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            background-color: #ffffff;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background-color: #4CAF50;
+            padding: 10px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+            color: white;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .content p {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Accommodation Notice</h2>
+        </div>
+        <div class="content">
+            <p><strong>Dear ${employee.name},</strong></p>
+            <p>
+                Your bed with Room Number: <strong>${booking.roomNumber}</strong>
+                and Bed Number: <strong>${booking.bedNumber}</strong> has been vacated.
+            </p>
+            <p>The bed was vacated on: <strong>${currentDate.toDateString()}</strong></p>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+            <p>Best Regards,<br>Accommodation Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 Accommodation Services. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>
