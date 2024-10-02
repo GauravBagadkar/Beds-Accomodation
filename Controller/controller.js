@@ -386,6 +386,55 @@ exports.getBookingHistory = async (req, res) => {
     }
 }
 
+// sorted booking history :-
+exports.formattedBookingHistory = async (req, res) => {
+    try {
+        // Fetching all booking records with selected constant and dynamic fields
+        const bookings = await Booking.findAll({
+            attributes: [
+                'id', 'empId', 'name', 'deptName', 'email', // Constant data
+                'roomNumber', 'bedNumber', 'bedId', 'loggedInDate', 'loggedOutDate' // Dynamic data
+            ],
+            order: [['loggedInDate', 'DESC']]
+        });
+
+        // Object to hold the grouped data by empId
+        const bookingHistory = {};
+
+        for (const booking of bookings) {
+
+            if (!bookingHistory[booking.empId]) {
+
+                bookingHistory[booking.empId] = {
+                    id: booking.id,
+                    empId: booking.empId,
+                    name: booking.name,
+                    deptName: booking.deptName,
+                    email: booking.email,
+                    bookingDetails: []
+                };
+            }
+
+            bookingHistory[booking.empId].bookingDetails.push({
+                roomNumber: booking.roomNumber,
+                bedNumber: booking.bedNumber,
+                bedId: booking.bedId,
+                loggedInDate: booking.loggedInDate,
+                loggedOutDate: booking.loggedOutDate
+            });
+        }
+
+        // Convert the bookingHistory object to an array
+        const result = Object.values(bookingHistory);
+
+        res.status(200).json({ success: 1, data: result });
+
+    } catch (error) {
+        res.status(400).json({ success: 0, message: error.message, error: 'Failed to retrieve booking history.' });
+    }
+}
+
+
 // get booking data by search :-
 exports.searchName = async (req, res) => {
     try {

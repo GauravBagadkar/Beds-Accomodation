@@ -17,7 +17,8 @@ router.post('/EXCELdownloadBookingHistory', Controller.EXCELdownloadBookingHisto
 
 router.post('/search', validation.validate('searching'), Controller.searchName);
 
-router.get('/getBookingHistory', Controller.getBookingHistory)
+router.get('/getBookingHistory', Controller.getBookingHistory);
+router.get('/formattedBookingHistory', Controller.formattedBookingHistory);
 router.get('/CSVdownloadBookingHistory', Controller.CSVdownloadBookingHistory);
 
 module.exports = router;
