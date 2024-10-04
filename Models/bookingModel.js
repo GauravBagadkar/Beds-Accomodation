@@ -26,6 +26,11 @@ module.exports = (sequelize, Sequelize) => {
         bedId: {
             type: Sequelize.INTEGER
         },
+        bedStatus: {
+            type: Sequelize.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,  // False = Vacant, True = Booked
+        },
         loggedInDate: {
             type: Sequelize.DATEONLY
         },

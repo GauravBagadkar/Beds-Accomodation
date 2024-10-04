@@ -31,7 +31,13 @@ module.exports = (sequelize, Sequelize) => {
         },
         password: {
             type: Sequelize.STRING
-        }
+        },
+        // resetToken: {
+        //     type: Sequelize.STRING
+        // },
+        // resetTokenExpires: {
+        //     type: Sequelize.STRING
+        // }
     })
     return employee;
 }
