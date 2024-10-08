@@ -19,6 +19,7 @@ router.post('/search', validation.validate('searching'), Controller.searchName);
 router.post('/bookingSearchName', Controller.bookingSearchName);
 
 router.get('/getBookingHistory', Controller.getBookingHistory);
+router.get('/getEmployeeList', Controller.getEmployeeList);
 router.get('/formattedBookingHistory', Controller.formattedBookingHistory);
 router.get('/CSVdownloadBookingHistory', Controller.CSVdownloadBookingHistory);
 

@@ -11,11 +11,6 @@ module.exports = (sequelize, Sequelize) => {
         },
         roomId: {
             type: Sequelize.BIGINT
-        },
-        bedStatus: {
-            type: Sequelize.BOOLEAN,
-            allowNull: false,
-            defaultValue: false,  // False = Vacant, True = Booked
         }
     })
     return beds;

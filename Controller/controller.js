@@ -12,6 +12,7 @@ const ExcelJS = require('exceljs');
 
 const transporter = require("../Config/nodemailerConfig");
 
+const cron = require('node-cron');  // Add this for scheduling tasks
 const moment = require('moment');
 const { validationResult } = require("express-validator");
 const filterData = require("filter-data");
@@ -102,13 +103,13 @@ exports.empLogin = async (req, res) => {
     }
 }
 
-// booking Beds + email :-   
+// booking Beds + email :-
 exports.bookingBeds = async (req, res) => {
-    const { empId, bedId, loggedInDate, loggedOutDate } = req.body;
+    const { id, empId, bedId, loggedInDate, loggedOutDate } = req.body;
 
     try {
         // Get employee details to check gender
-        const employee = await Employee.findOne({ where: { id: req.body.empId } });
+        const employee = await Employee.findOne({ where: { id: empId } });
         if (!employee) {
             return res.status(404).json({ success: 0, message: "Employee not found" });
         }
@@ -137,18 +138,45 @@ exports.bookingBeds = async (req, res) => {
             });
         }
 
+        // Check if the bed is already booked during the new booking's loggedInDate to loggedOutDate
+        const overlappingBooking = await Booking.findOne({
+            where: {
+                bedId,
+                [Op.or]: [
+                    {
+                        // New loggedInDate is within an existing booking
+                        loggedInDate: {
+                            [Op.between]: [loggedInDate, loggedOutDate]
+                        }
+                    },
+                    {
+                        // New loggedOutDate is within an existing booking
+                        loggedOutDate: {
+                            [Op.between]: [loggedInDate, loggedOutDate]
+                        }
+                    },
+                    {
+                        // Existing booking is completely within the new booking's date range
+                        [Op.and]: [
+                            { loggedInDate: { [Op.lte]: loggedInDate } },
+                            { loggedOutDate: { [Op.gte]: loggedOutDate } }
+                        ]
+                    }
+                ]
+            }
+        });
 
-        // Check if the bed is already booked
-        if (bed.bedStatus === true) {
-            return res.status(400).json({ success: 0, message: "This bed is already booked" });
+        if (overlappingBooking) {
+            return res.status(400).json({ success: 0, message: "This bed is already booked for the selected date range" });
         }
 
+        // Check if the bed's status is false or if there's no overlap with the new booking
         const room = bed.tbl_rooms;  // Assuming Beds has a relationship with Rooms
         if (!room) {
             return res.status(404).json({ message: "Room not found for the selected bed" });
         }
 
-        // Create booking
+        // Create the booking record (without setting bedStatus to true yet)
         const booking = await Booking.create({
             empId,
             name: employee.name,
@@ -162,29 +190,6 @@ exports.bookingBeds = async (req, res) => {
             bedStatus: true
         });
 
-        // Mark the bed as booked
-        await Beds.update(
-            { bedStatus: true },
-            { where: { id: bedId } }
-        );
-
-        // Check if loggedOutDate has passed or is today, then set bedStatus to false
-        const today = moment().startOf('day');
-        const logOutDay = moment(loggedOutDate).startOf('day');
-
-        if (logOutDay.isBefore(today)) {
-            // Update bedStatus to false in Booking and Beds if the loggedOutDate has passed or is today
-            await Booking.update(
-                { bedStatus: false },
-                { where: { bedId, loggedOutDate: { [Op.lte]: today } } }
-            );
-
-            await Beds.update(
-                { bedStatus: false },
-                { where: { id: bedId } }
-            );
-        }
-
         // Read the HTML template file
         const filePath = path.join(__dirname, "../Public/booking.html");
         let htmlContent = fs.readFileSync(filePath, 'utf8');
@@ -197,16 +202,16 @@ exports.bookingBeds = async (req, res) => {
             .replace('${loggedInDate}', loggedInDate)
             .replace('${loggedOutDate}', loggedOutDate);
 
-        // send mail with defined transport object
+        // Send mail with defined transport object
         const info = await transporter.sendMail({
             from: 'bloodyindiansparrow@gmail.com', // sender address
             to: employee.email, // list of receivers
-            subject: "Beds Accomodation Mail :- ",
+            subject: "Beds Accommodation Mail :- ",
             html: htmlContent
         });
         console.log("Email Sent:%s", info.messageId);
 
-        res.status(200).json({ success: 1, data: booking, message: "Booking Completed" });
+        res.status(200).json({ success: 1, data: booking, message: "Booking Created. Bed will be marked as booked on the loggedInDate." });
 
     } catch (error) {
         console.log(error);
@@ -221,7 +226,7 @@ exports.bookingSearchName = async (req, res) => {
         let whereConditions = {};
         if (name) {
             whereConditions = {
-                name: { [Op.iLike]: `%${name}%` }
+                name: { [Op.iLike]: `${name}%` }
             };
         }
         const showData = await Employee.findAll({
@@ -236,6 +241,18 @@ exports.bookingSearchName = async (req, res) => {
     } catch (error) {
         console.log(error)
         res.status(400).json({ success: 0, message: error.message })
+    }
+}
+
+// Get Employee List  :-
+exports.getEmployeeList = async (req, res) => {
+    try {
+        const bookings = await Employee.findAll({
+            attributes: { exclude: ['password'] }
+        });
+        res.status(200).json({ success: 1, data: bookings });
+    } catch (error) {
+        res.status(400).json({ error: 'Failed to retrieve Employee Details.' });
     }
 }
 
@@ -268,7 +285,8 @@ exports.viewExtendBooking = async (req, res) => {
                 }
             ],
             where: {
-                bedId: req.body.bedId
+                bedId: req.body.bedId,
+                id: req.body.bookingId
             },
             raw: true
         })
@@ -277,7 +295,12 @@ exports.viewExtendBooking = async (req, res) => {
             const updateBooking = await Booking.update({
                 loggedOutDate: req.body.loggedOutDate
             },
-                { where: { bedId: req.body.bedId } }
+                {
+                    where: {
+                        bedId: req.body.bedId,
+                        id: req.body.bookingId
+                    }
+                }
             )
             res.status(200).json({ success: 1, message: 'Beds Details with User', data1: viewBooking, data2: updateBooking });
         }
@@ -289,89 +312,6 @@ exports.viewExtendBooking = async (req, res) => {
         res.status(200).json({ message: error.message });
     }
 }
-
-// // Check bed availability and dashboard representation
-// exports.checkBeds = async (req, res) => {
-//     const { date, filterType } = req.body;
-
-//     try {
-//         let roomNumbers = [];
-//         if (filterType === "Female") {
-//             roomNumbers = [101, 102];
-//         } else if (filterType === "Male") {
-//             roomNumbers = [103, 104];
-//         }
-
-//         // Fetch all beds based on room filter
-//         const allBeds = await Beds.findAll({
-//             include: {
-//                 model: Rooms,
-//                 as: "tbl_rooms",
-//                 where: {
-//                     roomNumber: roomNumbers.length > 0 ? { [Op.in]: roomNumbers } : { [Op.ne]: null }
-//                 }
-//             }
-//         });
-
-//         // Fetch all bookings for the given date
-//         const bookedBeds = await Booking.findAll({
-//             where: {
-//                 loggedInDate: { [Op.lte]: date },
-//                 loggedOutDate: { [Op.gte]: date },
-//                 roomNumber: roomNumbers.length > 0 ? { [Op.in]: roomNumbers } : { [Op.ne]: null }
-//             },
-//             include: [
-//                 {
-//                     model: Beds,
-//                     as: "tbl_beds",
-//                     include: [{ model: Rooms, as: "tbl_rooms" }]
-//                 },
-//                 {
-//                     model: Employee,
-//                     as: "tbl_employees"
-//                 }
-//             ]
-//         });
-
-//         // Create a map to track bed status by bedNumber to prevent duplicates
-//         const bedStatusMap = new Map();
-
-//         // Add booked beds to the map with bedStatus true
-//         bookedBeds.forEach((booking) => {
-//             bedStatusMap.set(booking.tbl_beds.bedNumber, {
-//                 employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
-//                 roomNumber: booking.tbl_beds.tbl_rooms.roomNumber,
-//                 bedNumber: booking.tbl_beds.bedNumber,
-//                 loggedInDate: booking.loggedInDate,
-//                 loggedOutDate: booking.loggedOutDate,
-//                 bedStatus: true // Booked bed
-//             });
-//         });
-
-//         // Add vacant beds to the map only if they are not already booked
-//         allBeds.forEach((bed) => {
-//             if (!bedStatusMap.has(bed.bedNumber)) {
-//                 bedStatusMap.set(bed.bedNumber, {
-//                     roomNumber: bed.tbl_rooms.roomNumber,
-//                     bedNumber: bed.bedNumber,
-//                     bedStatus: false // Vacant bed
-//                 });
-//             }
-//         });
-
-//         // Combine the map values into a response array
-//         const combinedResponse = Array.from(bedStatusMap.values());
-
-//         // Response
-//         res.status(200).json({
-//             success: true,
-//             data: combinedResponse
-//         });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: "Internal server error", error: error.message });
-//     }
-// };
 
 // Check bed availability and dashboard representation
 exports.checkBeds = async (req, res) => {
@@ -460,14 +400,13 @@ exports.checkBeds = async (req, res) => {
     }
 };
 
-
 // book bed to vacant + email:-
 exports.bookToVacantBed = async (req, res) => {
     try {
-        const bedId = req.body.bedId;
-
+        const { bookingId } = req.body;
+        //, bedId, loggedInDate, loggedOutDate
         const booking = await Booking.findOne({
-            where: { bedId: bedId }
+            where: { id: bookingId }
         });
 
         if (!booking) {
@@ -476,17 +415,23 @@ exports.bookToVacantBed = async (req, res) => {
 
         // Update the loggedOutDate with the current date (vacating the bed)
         const currentDate = new Date();
-        await Booking.update({
+
+        // Update the Booking record with the provided date range
+        const updateBooking = await Booking.update({
             loggedOutDate: currentDate
         }, {
-            where: { bedId: bedId }
+            where: {
+                id: bookingId
+            }
         });
 
-        // Mark the bed as 'vacant' in the beds table
-        await Beds.update({
+        // Now try updating bedStatus
+        const updateBedStatus = await Booking.update({
             bedStatus: 'false'
         }, {
-            where: { id: bedId }
+            where: {
+                id: bookingId
+            }
         });
 
         // Fetch employee details from the booking
@@ -509,17 +454,16 @@ exports.bookToVacantBed = async (req, res) => {
             .replace('${booking.bedNumber}', booking.bedNumber)
             .replace('${currentDate.toDateString()}', currentDate.toDateString());
 
-        // send mail with defined transport object
+        // Send mail with defined transport object
         const info = await transporter.sendMail({
             from: 'bloodyindiansparrow@gmail.com', // sender address
             to: employee.email, // list of receivers
-            subject: "Beds Accomodation Mail :- ",
+            subject: "Beds Accommodation Mail :- ",
             html: htmlContent
-
         });
-        console.log("Email Sent:%s", info.messageId);
+        console.log("Email Sent: %s", info.messageId);
 
-        res.status(200).json({ success: 1, message: 'Bed successfully vacated and loggedOutDate updated' });
+        res.status(200).json({ success: 1, message: 'Bed successfully vacated, bedStatus updated, and email sent.' });
 
     } catch (error) {
         console.log(error);
@@ -761,40 +705,3 @@ exports.EXCELdownloadBookingHistory = async (req, res) => {
         res.status(500).json({ error: 'Failed to download Excel file' });
     }
 };
-
-// // Function to generate token
-// function generateResetToken(userId) {
-//     const token = jwt.sign({ id: empId }, secret, { expiresIn: '1h' });
-//     return token;
-// }
-
-// // forgot password :-
-// exports.frgotPassword = async (req, res) => {
-//     const { email } = req.body;
-
-//     try {
-//         const employee = await Employee.findOne({ where: { email } });
-
-//         if (!employee) {
-//             return res.status(404).json({ success: 0, message: 'Employe not found' });
-//         }
-
-//         const token = generateResetToken(employee.id);
-
-//         const resetLink = `http://bedsAccomodationSystem.com/reset-password/${token}`;
-
-//         const info = await transporter.sendMail({
-//             from: 'bloodyindiansparrow@gmail.com',
-//             to: employee.email,
-//             subject: 'Beds Accomodation Password Reset Mail',
-//             html: `<p>You requested for a password reset</p>
-//                <p>Click this <a href="${resetLink}">link</a> to reset your password</p>`
-//         });
-
-//         console.log("Email Sent:%s", info.messageId);
-//         res.status(200).json({ success: 1, message: 'Password reset email sent!' });
-
-//     } catch (error) {
-//         res.status(500).json({ success: 0, message: error.message, message: 'Server error' });
-//     }
-// };
