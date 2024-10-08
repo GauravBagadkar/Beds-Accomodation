@@ -362,7 +362,7 @@ exports.checkBeds = async (req, res) => {
         // Add booked beds to the map with bedStatus true and bedDetails
         bookedBeds.forEach((booking) => {
             bedStatusMap.set(booking.tbl_beds.bedNumber, {
-                //employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
+                bookingId: booking?.dataValues?.id,
                 roomNumber: booking.tbl_beds.tbl_rooms.roomNumber,
                 bedNumber: booking.tbl_beds.bedNumber,
                 bedStatus: true, // Booked bed
