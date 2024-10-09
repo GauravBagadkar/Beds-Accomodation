@@ -699,3 +699,62 @@ exports.EXCELdownloadBookingHistory = async (req, res) => {
         res.status(500).json({ error: 'Failed to download Excel file' });
     }
 };
+
+// // Cancel Booking :-
+// exports.cancelBooking = async (req, res) => {
+//     try {
+//         const { bookingId } = req.body;
+//         const booking = await Booking.findOne({
+//             where: { id: bookingId }
+//         });
+
+//         if (!booking) {
+//             return res.status(404).json({ success: 0, message: 'Booking Not Found' });
+//         }
+
+//         const cancelBooking = await Booking.update({
+//             bedStatus: 'false',
+//             isCancel: 1
+//         }, {
+//             where: {
+//                 id: bookingId,
+//                 bedId: bedId
+//             }
+//         })
+
+//         // Fetch employee details from the booking
+//         const employee = await Employee.findOne({
+//             where: { id: booking.empId }
+//         });
+
+//         if (!employee) {
+//             return res.status(404).json({ success: 0, message: 'Employee not found' });
+//         }
+
+//         // Read the HTML template file
+//         const filePath = path.join(__dirname, "../Public/bookingCancel.html");
+//         let htmlContent = fs.readFileSync(filePath, 'utf8');
+
+//         // Replace placeholders in the HTML file with dynamic data
+//         htmlContent = htmlContent
+//             .replace('${employee.name}', employee.name)
+//             .replace('${booking.roomNumber}', booking.roomNumber)
+//             .replace('${booking.bedNumber}', booking.bedNumber)
+
+//         // Send mail with defined transport object
+//         const info = await transporter.sendMail({
+//             from: 'bloodyindiansparrow@gmail.com', // sender address
+//             to: employee.email, // list of receivers
+//             subject: "Beds Accommodation Mail :- ",
+//             html: htmlContent
+//         });
+//         console.log("Email Sent: %s", info.messageId);
+
+
+//         res.status(200).json({ success: 1, message: 'Booking successfully Cancel and Email sent.' });
+
+//     } catch (error) {
+//         console.log(error);
+//         res.status(400).json({ success: 0, message: error.message });
+//     }
+// }
