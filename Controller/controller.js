@@ -404,8 +404,8 @@ exports.checkBeds = async (req, res) => {
 // book bed to vacant + email:-
 exports.bookToVacantBed = async (req, res) => {
     try {
-        const { bookingId } = req.body;
-        //, bedId, loggedInDate, loggedOutDate
+        const { bookingId, bedId } = req.body;
+        // Find the booking by bookingId
         const booking = await Booking.findOne({
             where: { id: bookingId }
         });
@@ -417,21 +417,14 @@ exports.bookToVacantBed = async (req, res) => {
         // Update the loggedOutDate with the current date (vacating the bed)
         const currentDate = new Date();
 
-        // Update the Booking record with the provided date range
+        // Update the Booking record with the provided date range and bedStatus
         const updateBooking = await Booking.update({
-            loggedOutDate: currentDate
-        }, {
-            where: {
-                id: bookingId
-            }
-        });
-
-        // Now try updating bedStatus
-        const updateBedStatus = await Booking.update({
+            loggedOutDate: currentDate,
             bedStatus: 'false'
         }, {
             where: {
-                id: bookingId
+                id: bookingId,
+                bedId: bedId
             }
         });
 
