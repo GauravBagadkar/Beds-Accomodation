@@ -31,11 +31,11 @@ module.exports = (sequelize, Sequelize) => {
             allowNull: false,
             defaultValue: false,  // False = Vacant, True = Booked
         },
-        // isCancel: {
-        //     type: Sequelize.INTEGER,
-        //     allowNull: false,
-        //     defaultValue: 0, // 0 = not cancel 
-        // },
+        isCancel: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
+            defaultValue: 0, // 0 = not cancel 
+        },
         loggedInDate: {
             type: Sequelize.DATEONLY
         },

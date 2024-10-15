@@ -18,7 +18,7 @@ router.post('/EXCELdownloadBookingHistory', Controller.EXCELdownloadBookingHisto
 router.post('/search', validation.validate('searching'), Controller.searchName);
 router.post('/bookingSearchName', Controller.bookingSearchName);
 
-// router.post('/cancelBooking', Controller.cancelBooking);
+router.post('/cancelBooking', Controller.cancelBooking);
 
 router.get('/getBookingHistory', Controller.getBookingHistory);
 router.get('/getEmployeeList', Controller.getEmployeeList);
