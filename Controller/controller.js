@@ -396,10 +396,12 @@ exports.checkBeds = async (req, res) => {
     //     });
     // }
     try {
-        await Booking.findOne({
+        const aaa = await Booking.findOne({
             where: { id: 1 }
         })
+        res.status(200).json({ success: 1, data: aaa })
     }
+
     catch (error) {
         console.error('Error in checkBeds:', error);
         res.status(500).json({
