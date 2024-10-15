@@ -672,7 +672,7 @@ exports.formattedBookingHistory = async (req, res) => {
         const bookings = await Booking.findAll({
             attributes: [
                 'id', 'empId', 'name', 'deptName', 'email', // Constant data
-                'roomNumber', 'bedNumber', 'bedId', 'loggedInDate', 'loggedOutDate' // Dynamic data
+                'roomNumber', 'bedNumber', 'bedId', 'loggedInDate', 'loggedOutDate', 'isCancel' // Dynamic data
             ],
             order: [['loggedInDate', 'DESC']]
         });
@@ -699,7 +699,8 @@ exports.formattedBookingHistory = async (req, res) => {
                 bedNumber: booking.bedNumber,
                 bedId: booking.bedId,
                 loggedInDate: booking.loggedInDate,
-                loggedOutDate: booking.loggedOutDate
+                loggedOutDate: booking.loggedOutDate,
+                isCancel: booking.isCancel
             });
         }
 
