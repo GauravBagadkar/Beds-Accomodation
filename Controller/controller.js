@@ -409,9 +409,12 @@ exports.viewExtendBooking = async (req, res) => {
 exports.checkBeds = async (req, res) => {
     const { date, filterType } = req.body;
 
+    // console.log('Input received:', { date, filterType });
+
     try {
         // Convert date to UTC to ensure consistency across environments
         const utcDate = new Date(date + 'T00:00:00Z').toISOString().split('T')[0];
+        // console.log('UTC Date:', utcDate);
 
         let roomNumbers = [];
         if (filterType === "Female") {
@@ -419,6 +422,7 @@ exports.checkBeds = async (req, res) => {
         } else if (filterType === "Male") {
             roomNumbers = [103, 104];
         }
+        // console.log('Room Numbers:', roomNumbers);
 
         // Fetch all beds based on room filter
         const allBeds = await Beds.findAll({
@@ -430,6 +434,7 @@ exports.checkBeds = async (req, res) => {
                 }
             }
         });
+        // console.log('All Beds:', JSON.stringify(allBeds, null, 2));
 
         // Fetch all bookings for the given date
         const bookedBeds = await Booking.findAll({
@@ -450,15 +455,20 @@ exports.checkBeds = async (req, res) => {
                 }
             ]
         });
+        // console.log('Booked Beds:', JSON.stringify(bookedBeds, null, 2));
 
         // Create a map to track bed status by bedNumber to prevent duplicates
         const bedStatusMap = new Map();
 
         // Add booked beds to the map with bedStatus true and bedDetails
         for (const booking of bookedBeds) {
+            if (!booking.tbl_beds) {
+                console.warn(`Warning: Booking ${booking.id} has no associated bed`);
+                continue;
+            }
             bedStatusMap.set(booking.tbl_beds.bedNumber, {
-                bookingId: booking?.dataValues?.id,
-                roomNumber: booking.tbl_beds.tbl_rooms.roomNumber,
+                bookingId: booking.id,
+                roomNumber: booking.tbl_beds.tbl_rooms?.roomNumber,
                 bedNumber: booking.tbl_beds.bedNumber,
                 bedStatus: true,
                 employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
@@ -471,7 +481,7 @@ exports.checkBeds = async (req, res) => {
         for (const bed of allBeds) {
             if (!bedStatusMap.has(bed.bedNumber)) {
                 bedStatusMap.set(bed.bedNumber, {
-                    roomNumber: bed.tbl_rooms.roomNumber,
+                    roomNumber: bed.tbl_rooms?.roomNumber,
                     bedNumber: bed.bedNumber,
                     bedStatus: false,
                 });
@@ -480,18 +490,35 @@ exports.checkBeds = async (req, res) => {
 
         // Combine the map values into a response array
         const combinedResponse = Array.from(bedStatusMap.values());
+        // console.log('Combined Response:', JSON.stringify(combinedResponse, null, 2));
+
+        // Additional check for data consistency
+        const inconsistentData = combinedResponse.filter(bed =>
+            (bed.bedStatus === true && (!bed.employee || !bed.loggedInDate || !bed.loggedOutDate)) ||
+            (bed.bedStatus === false && (bed.employee || bed.loggedInDate || bed.loggedOutDate))
+        );
+
+        if (inconsistentData.length > 0) {
+            // console.warn('Inconsistent data detected:', JSON.stringify(inconsistentData, null, 2));
+        }
 
         // Response
         res.status(200).json({
             success: 1,
-            data: combinedResponse
+            data: combinedResponse,
+            metadata: {
+                totalBeds: allBeds.length,
+                bookedBeds: bookedBeds.length,
+                vacantBeds: allBeds.length - bookedBeds.length,
+                inconsistentDataCount: inconsistentData.length
+            }
         });
     }
     catch (error) {
         console.error('Error in checkBeds:', error);
         res.status(500).json({
             message: "Internal server error",
-            error: process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred'
+            error: process.env.NODE_ENV === 'development' ? error.stack : 'An unexpected error occurred'
         });
     }
 };
