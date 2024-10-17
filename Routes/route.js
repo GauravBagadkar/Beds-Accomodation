@@ -12,7 +12,7 @@ router.post('/addEmployee', Controller.addEmployee);
 router.post('/checkBeds', Controller.checkBeds);
 router.post('/viewExtendBooking', Controller.viewExtendBooking);
 router.post('/bookToVacantBed', Controller.bookToVacantBed);
-router.post('/getBookingsByMonth', Controller.getBookingsByMonth);
+router.post('/getAllBookingExcel', Controller.getAllBookingExcel);
 router.post('/EXCELdownloadBookingHistory', Controller.EXCELdownloadBookingHistory);
 
 router.post('/search', validation.validate('searching'), Controller.searchName);
@@ -23,6 +23,6 @@ router.post('/cancelBooking', Controller.cancelBooking);
 router.get('/getBookingHistory', Controller.getBookingHistory);
 router.get('/getEmployeeList', Controller.getEmployeeList);
 router.get('/formattedBookingHistory', Controller.formattedBookingHistory);
-router.get('/CSVdownloadBookingHistory', Controller.CSVdownloadBookingHistory);
+// router.get('/CSVdownloadBookingHistory', Controller.CSVdownloadBookingHistory);
 
 module.exports = router;

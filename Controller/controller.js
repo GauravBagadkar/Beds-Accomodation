@@ -314,437 +314,7 @@ exports.viewExtendBooking = async (req, res) => {
     }
 }
 
-// // check beds & Dashboard :-
-// exports.checkBeds = async (req, res) => {
-//     const { date, filterType } = req.body;
-
-//     try {
-//         // Convert date to UTC to ensure consistency across environments
-//         const utcDate = new Date(date).toISOString().split('T')[0];
-
-//         let roomNumbers = [];
-//         if (filterType === "Female") {
-//             roomNumbers = [101, 102];
-//         } else if (filterType === "Male") {
-//             roomNumbers = [103, 104];
-//         }
-
-//         // Fetch all beds based on room filter
-//         const allBeds = await Beds.findAll({
-//             include: {
-//                 model: Rooms,
-//                 as: "tbl_rooms",
-//                 where: {
-//                     roomNumber: roomNumbers.length > 0 ? { [Op.in]: roomNumbers } : { [Op.ne]: null }
-//                 }
-//             }
-//         });
-
-//         // Fetch all bookings for the given date
-//         const bookedBeds = await Booking.findAll({
-//             where: {
-//                 loggedInDate: { [Op.lte]: utcDate },
-//                 loggedOutDate: { [Op.gte]: utcDate },
-//                 roomNumber: roomNumbers.length > 0 ? { [Op.in]: roomNumbers } : { [Op.ne]: null }
-//             },
-//             include: [
-//                 {
-//                     model: Beds,
-//                     as: "tbl_beds",
-//                     include: [{ model: Rooms, as: "tbl_rooms" }]
-//                 },
-//                 {
-//                     model: Employee,
-//                     as: "tbl_employees"
-//                 }
-//             ]
-//         });
-
-//         // Create a map to track bed status by bedNumber to prevent duplicates
-//         const bedStatusMap = new Map();
-
-//         // Add booked beds to the map with bedStatus true and bedDetails
-//         for (const booking of bookedBeds) {
-//             bedStatusMap.set(booking.tbl_beds.bedNumber, {
-//                 bookingId: booking?.dataValues?.id,
-//                 roomNumber: booking.tbl_beds.tbl_rooms.roomNumber,
-//                 bedNumber: booking.tbl_beds.bedNumber,
-//                 bedStatus: true,
-//                 employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
-//                 loggedInDate: booking.loggedInDate,
-//                 loggedOutDate: booking.loggedOutDate
-//             });
-//         }
-
-//         // Add vacant beds to the map only if they are not already booked
-//         for (const bed of allBeds) {
-//             if (!bedStatusMap.has(bed.bedNumber)) {
-//                 bedStatusMap.set(bed.bedNumber, {
-//                     roomNumber: bed.tbl_rooms.roomNumber,
-//                     bedNumber: bed.bedNumber,
-//                     bedStatus: false,
-//                 });
-//             }
-//         }
-
-//         // Combine the map values into a response array
-//         const combinedResponse = Array.from(bedStatusMap.values());
-
-//         // Response
-//         res.status(200).json({
-//             success: 1,
-//             data: combinedResponse
-//         });
-//     }
-//     catch (error) {
-//         console.error('Error in checkBeds:', error);
-//         res.status(500).json({
-//             message: "Internal server error",
-//             error: process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred'
-//         });
-//     }
-// };
-
-// // try 1
-// exports.checkBeds = async (req, res) => {
-//     const { date, filterType } = req.body;
-
-//     // console.log('Input received:', { date, filterType });
-
-//     try {
-//         // Convert date to UTC to ensure consistency across environments
-//         const utcDate = new Date(date + 'T00:00:00Z').toISOString().split('T')[0];
-//         // console.log('UTC Date:', utcDate);
-
-//         let roomNumbers = [];
-//         if (filterType === "Female") {
-//             roomNumbers = [101, 102];
-//         } else if (filterType === "Male") {
-//             roomNumbers = [103, 104];
-//         }
-//         // console.log('Room Numbers:', roomNumbers);
-
-//         // Fetch all beds based on room filter
-//         const allBeds = await Beds.findAll({
-//             include: {
-//                 model: Rooms,
-//                 as: "tbl_rooms",
-//                 where: {
-//                     roomNumber: roomNumbers.length > 0 ? { [Op.in]: roomNumbers } : { [Op.ne]: null }
-//                 }
-//             }
-//         });
-//         // console.log('All Beds:', JSON.stringify(allBeds, null, 2));
-
-//         // Fetch all bookings for the given date
-//         const bookedBeds = await Booking.findAll({
-//             where: {
-//                 loggedInDate: { [Op.lte]: utcDate },
-//                 loggedOutDate: { [Op.gte]: utcDate },
-//                 roomNumber: roomNumbers.length > 0 ? { [Op.in]: roomNumbers } : { [Op.ne]: null }
-//             },
-//             include: [
-//                 {
-//                     model: Beds,
-//                     as: "tbl_beds",
-//                     include: [{ model: Rooms, as: "tbl_rooms" }]
-//                 },
-//                 {
-//                     model: Employee,
-//                     as: "tbl_employees"
-//                 }
-//             ]
-//         });
-//         // console.log('Booked Beds:', JSON.stringify(bookedBeds, null, 2));
-
-//         // Create a map to track bed status by bedNumber to prevent duplicates
-//         const bedStatusMap = new Map();
-
-//         // Add booked beds to the map with bedStatus true and bedDetails
-//         for (const booking of bookedBeds) {
-//             if (!booking.tbl_beds) {
-//                 console.warn(`Warning: Booking ${booking.id} has no associated bed`);
-//                 continue;
-//             }
-//             bedStatusMap.set(booking.tbl_beds.bedNumber, {
-//                 bookingId: booking.id,
-//                 roomNumber: booking.tbl_beds.tbl_rooms?.roomNumber,
-//                 bedNumber: booking.tbl_beds.bedNumber,
-//                 bedStatus: true,
-//                 employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
-//                 loggedInDate: booking.loggedInDate,
-//                 loggedOutDate: booking.loggedOutDate
-//             });
-//         }
-
-//         // Add vacant beds to the map only if they are not already booked
-//         for (const bed of allBeds) {
-//             if (!bedStatusMap.has(bed.bedNumber)) {
-//                 bedStatusMap.set(bed.bedNumber, {
-//                     roomNumber: bed.tbl_rooms?.roomNumber,
-//                     bedNumber: bed.bedNumber,
-//                     bedStatus: false,
-//                 });
-//             }
-//         }
-
-//         // Combine the map values into a response array
-//         const combinedResponse = Array.from(bedStatusMap.values());
-//         // console.log('Combined Response:', JSON.stringify(combinedResponse, null, 2));
-
-//         // Additional check for data consistency
-//         const inconsistentData = combinedResponse.filter(bed =>
-//             (bed.bedStatus === true && (!bed.employee || !bed.loggedInDate || !bed.loggedOutDate)) ||
-//             (bed.bedStatus === false && (bed.employee || bed.loggedInDate || bed.loggedOutDate))
-//         );
-
-//         if (inconsistentData.length > 0) {
-//             // console.warn('Inconsistent data detected:', JSON.stringify(inconsistentData, null, 2));
-//         }
-
-//         // Response
-//         res.status(200).json({
-//             success: 1,
-//             data: combinedResponse,
-//             metadata: {
-//                 totalBeds: allBeds.length,
-//                 bookedBeds: bookedBeds.length,
-//                 vacantBeds: allBeds.length - bookedBeds.length,
-//                 inconsistentDataCount: inconsistentData.length
-//             }
-//         });
-//     }
-//     catch (error) {
-//         console.error('Error in checkBeds:', error);
-//         res.status(500).json({
-//             message: "Internal server error",
-//             error: process.env.NODE_ENV === 'development' ? error.stack : 'An unexpected error occurred'
-//         });
-//     }
-// };
-
-// // try 2
-// exports.checkBeds = async (req, res) => {
-//     const { date, filterType } = req.body;
-
-//     console.log('Input received:', { date, filterType });
-
-//     try {
-//         // Convert date to UTC to ensure consistency across environments
-//         const utcDate = new Date(date + 'T00:00:00Z').toISOString().split('T')[0];
-//         console.log('UTC Date:', utcDate);
-
-//         let roomNumbers = [];
-//         if (filterType === "Female") {
-//             roomNumbers = [101, 102];
-//         } else if (filterType === "Male") {
-//             roomNumbers = [103, 104];
-//         }
-//         console.log('Room Numbers:', roomNumbers);
-
-//         // Fetch all beds based on room filter
-//         const allBeds = await Beds.findAll({
-//             include: {
-//                 model: Rooms,
-//                 as: "tbl_rooms",
-//                 where: {
-//                     roomNumber: roomNumbers.length > 0 ? { [Op.in]: roomNumbers } : { [Op.ne]: null }
-//                 }
-//             }
-//         });
-//         console.log('All Beds:', JSON.stringify(allBeds, null, 2));
-
-//         // Fetch all bookings for the given date
-//         const bookedBeds = await Booking.findAll({
-//             where: {
-//                 loggedInDate: { [Op.lte]: utcDate },
-//                 loggedOutDate: { [Op.gte]: utcDate },
-//                 roomNumber: roomNumbers.length > 0 ? { [Op.in]: roomNumbers } : { [Op.ne]: null }
-//             },
-//             include: [
-//                 {
-//                     model: Beds,
-//                     as: "tbl_beds",
-//                     include: [{ model: Rooms, as: "tbl_rooms" }]
-//                 },
-//                 {
-//                     model: Employee,
-//                     as: "tbl_employees"
-//                 }
-//             ]
-//         });
-//         console.log('Booked Beds:', JSON.stringify(bookedBeds, null, 2));
-
-//         // Create a map to track bed status by bedNumber
-//         const bedStatusMap = new Map();
-
-//         // First, add all beds with their database status
-//         for (const bed of allBeds) {
-//             bedStatusMap.set(bed.bedNumber, {
-//                 roomNumber: bed.tbl_rooms?.roomNumber,
-//                 bedNumber: bed.bedNumber,
-//                 bedStatus: bed.bedStatus, // Use the actual database status
-//             });
-//         }
-
-//         // Then, update the status only for beds that have active bookings
-//         for (const booking of bookedBeds) {
-//             if (!booking.tbl_beds) {
-//                 console.warn(`Warning: Booking ${booking.id} has no associated bed`);
-//                 continue;
-//             }
-
-//             const existingBedInfo = bedStatusMap.get(booking.tbl_beds.bedNumber);
-//             if (existingBedInfo) {
-//                 bedStatusMap.set(booking.tbl_beds.bedNumber, {
-//                     ...existingBedInfo,
-//                     bookingId: booking.id,
-//                     bedStatus: true, // Override only if there's an active booking
-//                     employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
-//                     loggedInDate: booking.loggedInDate,
-//                     loggedOutDate: booking.loggedOutDate
-//                 });
-//             }
-//         }
-
-//         // Combine the map values into a response array
-//         const combinedResponse = Array.from(bedStatusMap.values());
-//         console.log('Combined Response:', JSON.stringify(combinedResponse, null, 2));
-
-//         // Response
-//         res.status(200).json({
-//             success: 1,
-//             data: combinedResponse,
-//             metadata: {
-//                 totalBeds: allBeds.length,
-//                 bookedBeds: bookedBeds.length,
-//                 vacantBeds: combinedResponse.filter(bed => !bed.bedStatus).length
-//             }
-//         });
-//     }
-//     catch (error) {
-//         console.error('Error in checkBeds:', error);
-//         res.status(500).json({
-//             message: "Internal server error",
-//             error: process.env.NODE_ENV === 'development' ? error.stack : 'An unexpected error occurred'
-//         });
-//     }
-// };
-
-// // tryyy 3
-// exports.checkBeds = async (req, res) => {
-//     const { date, filterType } = req.body;
-//     try {
-//         // Convert date to UTC to ensure consistency across environments
-//         const utcDate = new Date(date + 'T00:00:00Z').toISOString().split('T')[0];
-
-//         let roomNumbers = [101, 102, 103, 104];
-//         if (filterType === "Female") {
-//             roomNumbers = [101, 102];
-//         } else if (filterType === "Male") {
-//             roomNumbers = [103, 104];
-//         }
-
-//         // Fetch all beds based on room filter
-//         const allBeds = await Beds.findAll({
-//             include: {
-//                 model: Rooms,
-//                 as: "tbl_rooms",
-//                 where: {
-//                     roomNumber: { [Op.in]: roomNumbers }
-//                 }
-//             },
-//             order: [
-//                 [{ model: Rooms, as: 'tbl_rooms' }, 'roomNumber', 'ASC'],
-//                 ['bedNumber', 'ASC']
-//             ]
-//         });
-
-//         // Fetch all bookings for the given date
-//         const bookedBeds = await Booking.findAll({
-//             where: {
-//                 loggedInDate: { [Op.lte]: utcDate },
-//                 loggedOutDate: { [Op.gte]: utcDate },
-//                 roomNumber: { [Op.in]: roomNumbers }
-//             },
-//             include: [
-//                 {
-//                     model: Beds,
-//                     as: "tbl_beds",
-//                     include: [{ model: Rooms, as: "tbl_rooms" }]
-//                 },
-//                 {
-//                     model: Employee,
-//                     as: "tbl_employees"
-//                 }
-//             ]
-//         });
-
-//         // Create a map to group beds by room number
-//         const roomBedMap = new Map();
-
-//         // Initialize the map with empty arrays for each room
-//         roomNumbers.forEach(roomNumber => {
-//             roomBedMap.set(roomNumber, []);
-//         });
-
-//         // Process all beds
-//         for (const bed of allBeds) {
-//             const roomNumber = bed.tbl_rooms?.roomNumber;
-//             if (roomNumber && roomBedMap.has(roomNumber)) {
-//                 const bedInfo = {
-//                     bedNumber: bed.bedNumber,
-//                     bedStatus: bed.bedStatus, // Always include the database status
-//                 };
-//                 roomBedMap.get(roomNumber).push(bedInfo);
-//             }
-//         }
-
-//         // Update bed information for booked beds
-//         for (const booking of bookedBeds) {
-//             if (!booking.tbl_beds) {
-//                 console.warn(`Warning: Booking ${booking.id} has no associated bed`);
-//                 continue;
-//             }
-
-//             const roomNumber = booking.tbl_beds.tbl_rooms?.roomNumber;
-//             if (roomNumber && roomBedMap.has(roomNumber)) {
-//                 const bedIndex = roomBedMap.get(roomNumber).findIndex(bed => bed.bedNumber === booking.tbl_beds.bedNumber);
-//                 if (bedIndex !== -1) {
-//                     roomBedMap.get(roomNumber)[bedIndex] = {
-//                         ...roomBedMap.get(roomNumber)[bedIndex],
-//                         bookingId: booking.id,
-//                         bedStatus: true, // Override to true for active bookings
-//                         employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
-//                         loggedInDate: booking.loggedInDate,
-//                         loggedOutDate: booking.loggedOutDate
-//                     };
-//                 }
-//             }
-//         }
-
-//         // Convert the map to the desired response format and sort beds
-//         const responseData = Array.from(roomBedMap, ([roomNumber, beds]) => ({
-//             roomNumber,
-//             beds: beds.sort((a, b) => a.bedNumber - b.bedNumber) // Sort beds by bedNumber
-//         }));
-
-//         // Response
-//         res.status(200).json({
-//             success: 1,
-//             data: responseData,
-//         });
-//     }
-//     catch (error) {
-//         console.error('Error in checkBeds:', error);
-//         res.status(500).json({
-//             message: "Internal server error",
-//             error: process.env.NODE_ENV === 'development' ? error.stack : 'An unexpected error occurred'
-//         });
-//     }
-// };
-
-// ding danf try
+// checkBeds Homepage :-
 exports.checkBeds = async (req, res) => {
     const { date, filterType } = req.body;
     try {
@@ -797,17 +367,14 @@ exports.checkBeds = async (req, res) => {
         const roomBedMap = new Map();
 
         // Initialize the map with empty arrays for each room
-        roomNumbers.forEach(roomNumber => {
-            roomBedMap.set(roomNumber, []);
-        });
+        roomNumbers.forEach(roomNumber => { roomBedMap.set(roomNumber, []); });
 
-        // Process all beds
         for (const bed of allBeds) {
             const roomNumber = bed.tbl_rooms?.roomNumber;
             if (roomNumber && roomBedMap.has(roomNumber)) {
                 const bedInfo = {
                     bedNumber: bed.bedNumber,
-                    bedStatus: false, // Default to false for all beds
+                    bedStatus: false,
                 };
                 roomBedMap.get(roomNumber).push(bedInfo);
             }
@@ -842,22 +409,15 @@ exports.checkBeds = async (req, res) => {
             beds: beds.sort((a, b) => a.bedNumber - b.bedNumber) // Sort beds by bedNumber
         }));
 
-        // Response
-        res.status(200).json({
-            success: 1,
-            data: responseData,
-        });
+        res.status(200).json({ success: 1, data: responseData, });
     }
     catch (error) {
-        console.error('Error in checkBeds:', error);
-        res.status(500).json({
-            message: "Internal server error",
-            error: process.env.NODE_ENV === 'development' ? error.stack : 'An unexpected error occurred'
-        });
+        console.error(error);
+        res.status(500).json({ success: 0, message: error.message });
     }
 };
 
-// book bed to vacant + email:-
+// book bed to vacant :-
 exports.bookToVacantBed = async (req, res) => {
     try {
         const { bookingId, bedId } = req.body;
@@ -1021,20 +581,67 @@ exports.searchName = async (req, res) => {
     }
 }
 
-// Get Booking history by month :-
-exports.getBookingsByMonth = async (req, res) => {
-    const year = moment().year();
+// // Get Booking history by month :-
+// exports.getBookingsByMonth = async (req, res) => {
+//     const year = moment().year();
+//     try {
+//         const { month, year } = req.body;
+
+//         if (!month || !year) {
+//             return res.status(400).json({ success: 0, message: "Month is required in query parameter" });
+//         }
+
+//         // Format start and end date for the month
+//         const startDate = moment(`${year}-${month}-01`).startOf('month').format('YYYY-MM-DD');
+//         const endDate = moment(`${year}-${month}-01`).endOf('month').format('YYYY-MM-DD');
+
+//         const bookings = await Booking.findAll({
+//             where: {
+//                 [Op.or]: [
+//                     {
+//                         loggedInDate: {
+//                             [Op.between]: [startDate, endDate]
+//                         }
+//                     },
+//                     {
+//                         loggedOutDate: {
+//                             [Op.between]: [startDate, endDate]
+//                         }
+//                     },
+//                     {
+//                         // Handles cases where the booking spans across months (loggedInDate before and loggedOutDate after the month)
+//                         loggedInDate: {
+//                             [Op.lte]: endDate
+//                         },
+//                         loggedOutDate: {
+//                             [Op.gte]: startDate
+//                         }
+//                     }
+//                 ]
+//             }
+//         });
+
+//         return res.status(200).json({ success: 1, data: bookings });
+//     } catch (error) {
+//         console.log(error);
+//         res.status(400).json({ message: error.message, error: 'Internal Server Error' });
+//     }
+// };
+
+// Download All EXCEL Booking History by Month and Year
+exports.getAllBookingExcel = async (req, res) => {
     try {
         const { month, year } = req.body;
 
         if (!month || !year) {
-            return res.status(400).json({ success: 0, message: "Month is required in query parameter" });
+            return res.status(400).json({ success: 0, message: "Month and year are required in the request body" });
         }
 
         // Format start and end date for the month
         const startDate = moment(`${year}-${month}-01`).startOf('month').format('YYYY-MM-DD');
         const endDate = moment(`${year}-${month}-01`).endOf('month').format('YYYY-MM-DD');
 
+        // Fetch filtered bookings for the specified month and year
         const bookings = await Booking.findAll({
             where: {
                 [Op.or]: [
@@ -1049,7 +656,7 @@ exports.getBookingsByMonth = async (req, res) => {
                         }
                     },
                     {
-                        // Handles cases where the booking spans across months (loggedInDate before and loggedOutDate after the month)
+                        // Handles cases where the booking spans across months
                         loggedInDate: {
                             [Op.lte]: endDate
                         },
@@ -1061,40 +668,82 @@ exports.getBookingsByMonth = async (req, res) => {
             }
         });
 
-        return res.status(200).json({ success: 1, data: bookings });
+        // Create a new Excel workbook and add a worksheet
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Bookings');
+
+        // Define the columns for the worksheet
+        worksheet.columns = [
+            { header: 'Employee ID', key: 'empId', width: 15 },
+            { header: 'Name', key: 'name', width: 20 },
+            { header: 'Email', key: 'email', width: 25 },
+            { header: 'Department', key: 'deptName', width: 20 },
+            { header: 'Room Number', key: 'roomNumber', width: 15 },
+            { header: 'Bed Number', key: 'bedNumber', width: 15 },
+            { header: 'Booking Date', key: 'loggedInDate', width: 20 },
+            { header: 'Logged Out Date', key: 'loggedOutDate', width: 20 },
+            { header: 'Booking Status', key: 'bedStatus', width: 15 },
+            { header: 'Is Cancel', key: 'isCancel', width: 10 }
+        ];
+
+        // Add rows to the worksheet by converting booking objects into a suitable format
+        worksheet.addRows(bookings.map(booking => ({
+            empId: booking.empId,
+            name: booking.name,
+            email: booking.email,
+            deptName: booking.deptName,
+            roomNumber: booking.roomNumber,
+            bedNumber: booking.bedNumber,
+            loggedInDate: booking.loggedInDate ? moment(booking.loggedInDate).format('YYYY-MM-DD') : 'N/A',
+            loggedOutDate: booking.loggedOutDate ? moment(booking.loggedOutDate).format('YYYY-MM-DD') : 'N/A',
+            bedStatus: booking.bedStatus ? 'Booked' : 'Vacant',
+            isCancel: booking.isCancel,
+        })));
+
+        // Set the response headers to download the Excel file
+        res.setHeader(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        res.setHeader('Content-Disposition', `attachment; filename=Bookings_${year}_${month}.xlsx`);
+
+        // Write the workbook to the response
+        await workbook.xlsx.write(res);
+        res.end();
+
     } catch (error) {
         console.log(error);
-        res.status(400).json({ message: error.message, error: 'Internal Server Error' });
+        res.status(500).json({ error: 'Failed to download Excel file' });
     }
 };
 
-// Download CSV Booking History :-
-exports.CSVdownloadBookingHistory = async (req, res) => {
-    try {
-        const bookings = await Booking.findAll();
+// // Download CSV Booking History :-
+// exports.CSVdownloadBookingHistory = async (req, res) => {
+//     try {
+//         const bookings = await Booking.findAll();
 
-        const csvWriter = createCsvWriter({
-            path: 'bookings.csv',
-            header: [
-                { id: 'empId', title: 'Employee ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'email', title: 'Email' },
-                { id: 'deptName', title: 'Department' },
-                { id: 'roomNumber', title: 'Room Number' },
-                { id: 'bedNumber', title: 'Bed Number' },
-                { id: 'loggedInDate', title: 'Booking Date' },
-                { id: 'loggedOutDate', title: 'Logged Out Date' }
-            ]
-        });
+//         const csvWriter = createCsvWriter({
+//             path: 'bookings.csv',
+//             header: [
+//                 { id: 'empId', title: 'Employee ID' },
+//                 { id: 'name', title: 'Name' },
+//                 { id: 'email', title: 'Email' },
+//                 { id: 'deptName', title: 'Department' },
+//                 { id: 'roomNumber', title: 'Room Number' },
+//                 { id: 'bedNumber', title: 'Bed Number' },
+//                 { id: 'loggedInDate', title: 'Booking Date' },
+//                 { id: 'loggedOutDate', title: 'Logged Out Date' }
+//             ]
+//         });
 
-        await csvWriter.writeRecords(bookings.map(booking => booking.toJSON()));
-        res.download('bookings.csv');
+//         await csvWriter.writeRecords(bookings.map(booking => booking.toJSON()));
+//         res.download('bookings.csv');
 
-    } catch (error) {
-        console.log(error);
-        res.status(400).json({ message: error.message, error: 'Failed to download CSV' });
-    }
-};
+//     } catch (error) {
+//         console.log(error);
+//         res.status(400).json({ message: error.message, error: 'Failed to download CSV' });
+//     }
+// };
 
 // Download EXCEL Booking History :-
 exports.EXCELdownloadBookingHistory = async (req, res) => {
@@ -1135,7 +784,8 @@ exports.EXCELdownloadBookingHistory = async (req, res) => {
             { header: 'Room Number', key: 'roomNumber', width: 10 },
             { header: 'Bed Number', key: 'bedNumber', width: 10 },
             { header: 'Booking Date', key: 'loggedInDate', width: 15 },
-            { header: 'Logged Out Date', key: 'loggedOutDate', width: 15 }
+            { header: 'Logged Out Date', key: 'loggedOutDate', width: 15 },
+            { header: 'Is Cancel', key: 'isCancel', width: 10 }
         ];
 
         // Adding the rows to the worksheet
