@@ -511,7 +511,6 @@ exports.formattedBookingHistory = async (req, res) => {
             if (!bookingHistory[booking.empId]) {
 
                 bookingHistory[booking.empId] = {
-                    id: booking.id,
                     empId: booking.empId,
                     name: booking.name,
                     deptName: booking.deptName,
@@ -521,6 +520,7 @@ exports.formattedBookingHistory = async (req, res) => {
             }
 
             bookingHistory[booking.empId].bookingDetails.push({
+                id: booking.id,
                 roomNumber: booking.roomNumber,
                 bedNumber: booking.bedNumber,
                 bedId: booking.bedId,
