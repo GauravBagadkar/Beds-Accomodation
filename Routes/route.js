@@ -17,12 +17,11 @@ router.post('/EXCELdownloadBookingHistory', Controller.EXCELdownloadBookingHisto
 
 router.post('/search', validation.validate('searching'), Controller.searchName);
 router.post('/bookingSearchName', Controller.bookingSearchName);
-
+router.post('/getProfile', Controller.getProfile);
 router.post('/cancelBooking', Controller.cancelBooking);
 
 router.get('/getBookingHistory', Controller.getBookingHistory);
 router.get('/getEmployeeList', Controller.getEmployeeList);
 router.get('/formattedBookingHistory', Controller.formattedBookingHistory);
-// router.get('/CSVdownloadBookingHistory', Controller.CSVdownloadBookingHistory);
 
 module.exports = router;

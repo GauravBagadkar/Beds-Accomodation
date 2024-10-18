@@ -3,20 +3,11 @@ const { Sequelize } = require('sequelize');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
-
-const jwt = require('jsonwebtoken');
-const secret = 'your_jwt_secret'; // Use a secure secret
-
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const ExcelJS = require('exceljs');
-
 const transporter = require("../Config/nodemailerConfig");
-
-const cron = require('node-cron');  // Add this for scheduling tasks
 const moment = require('moment');
 const { validationResult } = require("express-validator");
-const filterData = require("filter-data");
-const { response } = require('express');
+const cron = require('node-cron');  // Add this for scheduling tasks
 
 const Employee = db.employee;
 const Rooms = db.rooms;
@@ -100,9 +91,31 @@ exports.empLogin = async (req, res) => {
 
     catch (error) {
         console.log(error);
-        res.status(400).json({ message: error.message })
+        res.status(400).json({ success: 0, message: error.message })
     }
 }
+
+// Get user profile by ID
+exports.getProfile = async (req, res) => {
+    const { id } = req.body;
+    try {
+        const user = await Employee.findOne({
+            where: { id },
+            raw: true,
+            attributes: ['id', 'name', 'email', 'gender', 'deptName', 'contact']
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({ success: 1, data: user });
+
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({ success: 0, message: error.message })
+    }
+};
 
 // booking Beds + email :-
 exports.bookingBeds = async (req, res) => {
@@ -503,7 +516,6 @@ exports.formattedBookingHistory = async (req, res) => {
             order: [['loggedInDate', 'DESC']]
         });
 
-        // Object to hold the grouped data by empId
         const bookingHistory = {};
 
         for (const booking of bookings) {
@@ -580,53 +592,6 @@ exports.searchName = async (req, res) => {
         res.status(200).json({ success: 0, message: error.message });
     }
 }
-
-// // Get Booking history by month :-
-// exports.getBookingsByMonth = async (req, res) => {
-//     const year = moment().year();
-//     try {
-//         const { month, year } = req.body;
-
-//         if (!month || !year) {
-//             return res.status(400).json({ success: 0, message: "Month is required in query parameter" });
-//         }
-
-//         // Format start and end date for the month
-//         const startDate = moment(`${year}-${month}-01`).startOf('month').format('YYYY-MM-DD');
-//         const endDate = moment(`${year}-${month}-01`).endOf('month').format('YYYY-MM-DD');
-
-//         const bookings = await Booking.findAll({
-//             where: {
-//                 [Op.or]: [
-//                     {
-//                         loggedInDate: {
-//                             [Op.between]: [startDate, endDate]
-//                         }
-//                     },
-//                     {
-//                         loggedOutDate: {
-//                             [Op.between]: [startDate, endDate]
-//                         }
-//                     },
-//                     {
-//                         // Handles cases where the booking spans across months (loggedInDate before and loggedOutDate after the month)
-//                         loggedInDate: {
-//                             [Op.lte]: endDate
-//                         },
-//                         loggedOutDate: {
-//                             [Op.gte]: startDate
-//                         }
-//                     }
-//                 ]
-//             }
-//         });
-
-//         return res.status(200).json({ success: 1, data: bookings });
-//     } catch (error) {
-//         console.log(error);
-//         res.status(400).json({ message: error.message, error: 'Internal Server Error' });
-//     }
-// };
 
 // Download All EXCEL Booking History by Month and Year
 exports.getAllBookingExcel = async (req, res) => {
@@ -716,34 +681,6 @@ exports.getAllBookingExcel = async (req, res) => {
         res.status(500).json({ error: 'Failed to download Excel file' });
     }
 };
-
-// // Download CSV Booking History :-
-// exports.CSVdownloadBookingHistory = async (req, res) => {
-//     try {
-//         const bookings = await Booking.findAll();
-
-//         const csvWriter = createCsvWriter({
-//             path: 'bookings.csv',
-//             header: [
-//                 { id: 'empId', title: 'Employee ID' },
-//                 { id: 'name', title: 'Name' },
-//                 { id: 'email', title: 'Email' },
-//                 { id: 'deptName', title: 'Department' },
-//                 { id: 'roomNumber', title: 'Room Number' },
-//                 { id: 'bedNumber', title: 'Bed Number' },
-//                 { id: 'loggedInDate', title: 'Booking Date' },
-//                 { id: 'loggedOutDate', title: 'Logged Out Date' }
-//             ]
-//         });
-
-//         await csvWriter.writeRecords(bookings.map(booking => booking.toJSON()));
-//         res.download('bookings.csv');
-
-//     } catch (error) {
-//         console.log(error);
-//         res.status(400).json({ message: error.message, error: 'Failed to download CSV' });
-//     }
-// };
 
 // Download EXCEL Booking History :-
 exports.EXCELdownloadBookingHistory = async (req, res) => {
