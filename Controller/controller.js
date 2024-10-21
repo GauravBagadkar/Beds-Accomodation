@@ -119,7 +119,7 @@ exports.getProfile = async (req, res) => {
 
 // booking Beds + email :-
 exports.bookingBeds = async (req, res) => {
-    const { id, empId, bedId, loggedInDate, loggedOutDate } = req.body;
+    const { empId, bedId, loggedInDate, loggedOutDate } = req.body;
 
     try {
         // Get employee details to check gender
@@ -158,23 +158,8 @@ exports.bookingBeds = async (req, res) => {
                 bedId,
                 [Op.or]: [
                     {
-                        // New loggedInDate is within an existing booking
-                        loggedInDate: {
-                            [Op.between]: [loggedInDate, loggedOutDate]
-                        }
-                    },
-                    {
-                        // New loggedOutDate is within an existing booking
-                        loggedOutDate: {
-                            [Op.between]: [loggedInDate, loggedOutDate]
-                        }
-                    },
-                    {
-                        // Existing booking is completely within the new booking's date range
-                        [Op.and]: [
-                            { loggedInDate: { [Op.lte]: loggedInDate } },
-                            { loggedOutDate: { [Op.gte]: loggedOutDate } }
-                        ]
+                        loggedInDate: { [Op.lte]: loggedOutDate },
+                        loggedOutDate: { [Op.gte]: loggedInDate }
                     }
                 ]
             }
@@ -184,8 +169,7 @@ exports.bookingBeds = async (req, res) => {
             return res.status(400).json({ success: 0, message: "This bed is already booked for the selected date range" });
         }
 
-        // Check if the bed's status is false or if there's no overlap with the new booking
-        const room = bed.tbl_rooms;  // Assuming Beds has a relationship with Rooms
+        const room = bed.tbl_rooms;
         if (!room) {
             return res.status(404).json({ message: "Room not found for the selected bed" });
         }
