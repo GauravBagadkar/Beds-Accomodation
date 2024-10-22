@@ -152,22 +152,39 @@ exports.bookingBeds = async (req, res) => {
             });
         }
 
-        // Check if the bed is already booked during the new booking's loggedInDate to loggedOutDate
+        // // Check if the bed is already booked during the new booking's loggedInDate to loggedOutDate
+        // const overlappingBooking = await Booking.findOne({
+        //     where: {
+        //         bedId,
+        //         [Op.or]: [
+        //             {
+        //                 loggedInDate: { [Op.lte]: loggedOutDate },
+        //                 loggedOutDate: { [Op.gte]: loggedInDate }
+        //             }
+        //         ]
+        //     }
+        // });
+
         const overlappingBooking = await Booking.findOne({
             where: {
                 bedId,
-                [Op.or]: [
-                    {
-                        loggedInDate: { [Op.lte]: loggedOutDate },
-                        loggedOutDate: { [Op.gte]: loggedInDate }
-                    }
+                [Op.and]: [
+                    { loggedInDate: { [Op.lte]: loggedOutDate } },
+                    { loggedOutDate: { [Op.gte]: loggedInDate } }
                 ]
             }
         });
 
         if (overlappingBooking) {
-            return res.status(400).json({ success: 0, message: "This bed is already booked for the selected date range" });
+            return res.status(400).json({
+                success: 0,
+                message: `This bed is already booked from date: ${overlappingBooking.loggedInDate} to date: ${overlappingBooking.loggedOutDate}`
+            });
         }
+
+        // if (overlappingBooking) {
+        //     return res.status(400).json({ success: 0, message: "This bed is already booked for the selected date range" });
+        // }
 
         const room = bed.tbl_rooms;
         if (!room) {
