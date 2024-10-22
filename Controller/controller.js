@@ -671,7 +671,7 @@ exports.checkBeds = async (req, res) => {
 // book bed to vacant :-
 exports.bookToVacantBed = async (req, res) => {
     try {
-        const { bookingId, bedId } = req.body;
+        const { bookingId, bedId, loggedOutDate } = req.body;
         // Find the booking by bookingId
         const booking = await Booking.findOne({
             where: { id: bookingId }
@@ -681,12 +681,12 @@ exports.bookToVacantBed = async (req, res) => {
             return res.status(404).json({ success: 0, message: 'No active booking found for this bed' });
         }
 
-        // Update the loggedOutDate with the current date (vacating the bed)
-        const currentDate = new Date();
+        // // Update the loggedOutDate with the current date (vacating the bed)
+        // const currentDate = new Date();
 
         // Update the Booking record with the provided date range and bedStatus
         const updateBooking = await Booking.update({
-            loggedOutDate: currentDate,
+            loggedOutDate: loggedOutDate,
             bedStatus: 'false'
         }, {
             where: {
@@ -708,12 +708,15 @@ exports.bookToVacantBed = async (req, res) => {
         const filePath = path.join(__dirname, "../Public/vacant.html");
         let htmlContent = fs.readFileSync(filePath, 'utf8');
 
+        // Convert loggedOutDate to a readable format, if needed
+        const formattedLoggedOutDate = new Date(loggedOutDate).toDateString();  // Format loggedOutDate
+
         // Replace placeholders in the HTML file with dynamic data
         htmlContent = htmlContent
             .replace('${employee.name}', employee.name)
             .replace('${booking.roomNumber}', booking.roomNumber)
             .replace('${booking.bedNumber}', booking.bedNumber)
-            .replace('${currentDate.toDateString()}', currentDate.toDateString());
+            .replace('${loggedOutDate}', formattedLoggedOutDate);
 
         // Send mail with defined transport object
         const info = await transporter.sendMail({
