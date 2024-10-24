@@ -117,7 +117,6 @@ exports.getProfile = async (req, res) => {
     }
 };
 
-// booking Beds + email :-
 exports.bookingBeds = async (req, res) => {
     const { empId, bedId, loggedInDate, loggedOutDate } = req.body;
 
@@ -152,22 +151,11 @@ exports.bookingBeds = async (req, res) => {
             });
         }
 
-        // // Check if the bed is already booked during the new booking's loggedInDate to loggedOutDate
-        // const overlappingBooking = await Booking.findOne({
-        //     where: {
-        //         bedId,
-        //         [Op.or]: [
-        //             {
-        //                 loggedInDate: { [Op.lte]: loggedOutDate },
-        //                 loggedOutDate: { [Op.gte]: loggedInDate }
-        //             }
-        //         ]
-        //     }
-        // });
-
+        // Check if the bed is already booked during the new booking's loggedInDate to loggedOutDate
         const overlappingBooking = await Booking.findOne({
             where: {
                 bedId,
+                isCancel: 0,  // Exclude canceled bookings
                 [Op.and]: [
                     { loggedInDate: { [Op.lte]: loggedOutDate } },
                     { loggedOutDate: { [Op.gte]: loggedInDate } }
@@ -181,10 +169,6 @@ exports.bookingBeds = async (req, res) => {
                 message: `This bed is already booked from date: ${overlappingBooking.loggedInDate} to date: ${overlappingBooking.loggedOutDate}`
             });
         }
-
-        // if (overlappingBooking) {
-        //     return res.status(400).json({ success: 0, message: "This bed is already booked for the selected date range" });
-        // }
 
         const room = bed.tbl_rooms;
         if (!room) {
@@ -233,6 +217,7 @@ exports.bookingBeds = async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 };
+
 
 // exports.bookingBeds = async (req, res) => {
 //     const { empId, bedId, loggedInDate, loggedOutDate } = req.body;
@@ -441,110 +426,7 @@ exports.viewExtendBooking = async (req, res) => {
     }
 }
 
-// checkBeds Homepage original :-
-exports.checkBeds = async (req, res) => {
-    const { date, filterType } = req.body;
-    try {
-        // Convert date to UTC to ensure consistency across environments
-        const utcDate = new Date(date + 'T00:00:00Z').toISOString().split('T')[0];
-
-        let roomNumbers = [101, 102, 103, 104];
-        if (filterType === "Female") {
-            roomNumbers = [101, 102];
-        } else if (filterType === "Male") {
-            roomNumbers = [103, 104];
-        }
-
-        // Fetch all beds based on room filter
-        const allBeds = await Beds.findAll({
-            include: {
-                model: Rooms,
-                as: "tbl_rooms",
-                where: {
-                    roomNumber: { [Op.in]: roomNumbers }
-                }
-            },
-            order: [
-                [{ model: Rooms, as: 'tbl_rooms' }, 'roomNumber', 'ASC'],
-                ['bedNumber', 'ASC']
-            ]
-        });
-
-        // Fetch all bookings for the given date
-        const bookedBeds = await Booking.findAll({
-            where: {
-                loggedInDate: { [Op.lte]: utcDate },
-                loggedOutDate: { [Op.gte]: utcDate },
-                roomNumber: { [Op.in]: roomNumbers }
-            },
-            include: [
-                {
-                    model: Beds,
-                    as: "tbl_beds",
-                    include: [{ model: Rooms, as: "tbl_rooms" }]
-                },
-                {
-                    model: Employee,
-                    as: "tbl_employees"
-                }
-            ]
-        });
-
-        // Create a map to group beds by room number
-        const roomBedMap = new Map();
-
-        // Initialize the map with empty arrays for each room
-        roomNumbers.forEach(roomNumber => { roomBedMap.set(roomNumber, []); });
-
-        for (const bed of allBeds) {
-            const roomNumber = bed.tbl_rooms?.roomNumber;
-            if (roomNumber && roomBedMap.has(roomNumber)) {
-                const bedInfo = {
-                    bedNumber: bed.bedNumber,
-                    bedStatus: false,
-                };
-                roomBedMap.get(roomNumber).push(bedInfo);
-            }
-        }
-
-        // Update bed information for booked beds
-        for (const booking of bookedBeds) {
-            if (!booking.tbl_beds) {
-                console.warn(`Warning: Booking ${booking.id} has no associated bed`);
-                continue;
-            }
-
-            const roomNumber = booking.tbl_beds.tbl_rooms?.roomNumber;
-            if (roomNumber && roomBedMap.has(roomNumber)) {
-                const bedIndex = roomBedMap.get(roomNumber).findIndex(bed => bed.bedNumber === booking.tbl_beds.bedNumber);
-                if (bedIndex !== -1) {
-                    roomBedMap.get(roomNumber)[bedIndex] = {
-                        ...roomBedMap.get(roomNumber)[bedIndex],
-                        bedStatus: true,
-                        bookingId: booking.id,
-                        employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
-                        loggedInDate: booking.loggedInDate,
-                        loggedOutDate: booking.loggedOutDate
-                    };
-                }
-            }
-        }
-
-        // Convert the map to the desired response format and sort beds
-        const responseData = Array.from(roomBedMap, ([roomNumber, beds]) => ({
-            roomNumber,
-            beds: beds.sort((a, b) => a.bedNumber - b.bedNumber) // Sort beds by bedNumber
-        }));
-
-        res.status(200).json({ success: 1, data: responseData, });
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ success: 0, message: error.message });
-    }
-};
-
-// // checkBeds Homepage :-
+// // checkBeds Homepage original :-
 // exports.checkBeds = async (req, res) => {
 //     const { date, filterType } = req.body;
 //     try {
@@ -573,21 +455,12 @@ exports.checkBeds = async (req, res) => {
 //             ]
 //         });
 
-//         // Fetch all bookings where the bed is either booked or vacated today
-//         const bookings = await Booking.findAll({
+//         // Fetch all bookings for the given date
+//         const bookedBeds = await Booking.findAll({
 //             where: {
-//                 roomNumber: { [Op.in]: roomNumbers },
-//                 // Include beds booked on or before today and not vacated before today
-//                 [Op.or]: [
-//                     {
-//                         loggedInDate: { [Op.lte]: utcDate },
-//                         loggedOutDate: { [Op.gte]: utcDate } // Bed is still booked today
-//                     },
-//                     {
-//                         loggedOutDate: utcDate, // Bed is vacated today
-//                         bedStatus: false // Ensure it's marked as vacant
-//                     }
-//                 ]
+//                 loggedInDate: { [Op.lte]: utcDate },
+//                 loggedOutDate: { [Op.gte]: utcDate },
+//                 roomNumber: { [Op.in]: roomNumbers }
 //             },
 //             include: [
 //                 {
@@ -608,20 +481,19 @@ exports.checkBeds = async (req, res) => {
 //         // Initialize the map with empty arrays for each room
 //         roomNumbers.forEach(roomNumber => { roomBedMap.set(roomNumber, []); });
 
-//         // Populate the map with bed information (initially mark all beds as vacant)
 //         for (const bed of allBeds) {
 //             const roomNumber = bed.tbl_rooms?.roomNumber;
 //             if (roomNumber && roomBedMap.has(roomNumber)) {
 //                 const bedInfo = {
 //                     bedNumber: bed.bedNumber,
-//                     bedStatus: false, // Default to vacant
+//                     bedStatus: false,
 //                 };
 //                 roomBedMap.get(roomNumber).push(bedInfo);
 //             }
 //         }
 
-//         // Update bed information based on the bookings fetched
-//         for (const booking of bookings) {
+//         // Update bed information for booked beds
+//         for (const booking of bookedBeds) {
 //             if (!booking.tbl_beds) {
 //                 console.warn(`Warning: Booking ${booking.id} has no associated bed`);
 //                 continue;
@@ -632,24 +504,14 @@ exports.checkBeds = async (req, res) => {
 //                 const bedIndex = roomBedMap.get(roomNumber).findIndex(bed => bed.bedNumber === booking.tbl_beds.bedNumber);
 
 //                 if (bedIndex !== -1) {
-//                     // If bedStatus is false and loggedOutDate is today, the bed is vacant
-//                     if (booking.loggedOutDate === utcDate && booking.bedStatus === false) {
-//                         roomBedMap.get(roomNumber)[bedIndex] = {
-//                             ...roomBedMap.get(roomNumber)[bedIndex],
-//                             bedStatus: false, // Ensure it's vacant
-//                             // loggedOutDate: booking.loggedOutDate
-//                         };
-//                     } else {
-//                         // Otherwise, mark it as booked
-//                         roomBedMap.get(roomNumber)[bedIndex] = {
-//                             ...roomBedMap.get(roomNumber)[bedIndex],
-//                             bedStatus: true, // Mark as booked
-//                             bookingId: booking.id,
-//                             employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
-//                             loggedInDate: booking.loggedInDate,
-//                             loggedOutDate: booking.loggedOutDate
-//                         };
-//                     }
+//                     roomBedMap.get(roomNumber)[bedIndex] = {
+//                         ...roomBedMap.get(roomNumber)[bedIndex],
+//                         bedStatus: true,
+//                         bookingId: booking.id,
+//                         employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
+//                         loggedInDate: booking.loggedInDate,
+//                         loggedOutDate: booking.loggedOutDate
+//                     };
 //                 }
 //             }
 //         }
@@ -660,13 +522,138 @@ exports.checkBeds = async (req, res) => {
 //             beds: beds.sort((a, b) => a.bedNumber - b.bedNumber) // Sort beds by bedNumber
 //         }));
 
-//         res.status(200).json({ success: 1, data: responseData });
+//         res.status(200).json({ success: 1, data: responseData, });
 //     }
 //     catch (error) {
 //         console.error(error);
 //         res.status(500).json({ success: 0, message: error.message });
 //     }
 // };
+
+//checkBeds Homepage :-
+exports.checkBeds = async (req, res) => {
+    const { date, filterType } = req.body;
+    try {
+        // Convert date to UTC to ensure consistency across environments
+        const utcDate = new Date(date + 'T00:00:00Z').toISOString().split('T')[0];
+
+        let roomNumbers = [101, 102, 103, 104];
+        if (filterType === "Female") {
+            roomNumbers = [101, 102];
+        } else if (filterType === "Male") {
+            roomNumbers = [103, 104];
+        }
+
+        // Fetch all beds based on room filter
+        const allBeds = await Beds.findAll({
+            include: {
+                model: Rooms,
+                as: "tbl_rooms",
+                where: {
+                    roomNumber: { [Op.in]: roomNumbers }
+                }
+            },
+            order: [
+                [{ model: Rooms, as: 'tbl_rooms' }, 'roomNumber', 'ASC'],
+                ['bedNumber', 'ASC']
+            ]
+        });
+
+        // Fetch all bookings where the bed is either booked or vacated today
+        const bookings = await Booking.findAll({
+            where: {
+                roomNumber: { [Op.in]: roomNumbers },
+                // Include beds booked on or before today and not vacated before today
+                [Op.or]: [
+                    {
+                        loggedInDate: { [Op.lte]: utcDate },
+                        loggedOutDate: { [Op.gte]: utcDate }, // Bed is still booked today
+                        isCancel: 0
+                    },
+                    {
+                        loggedOutDate: utcDate, // Bed is vacated today
+                        isCancel: 1 // Ensure it's marked as vacant
+                    }
+                ]
+            },
+            include: [
+                {
+                    model: Beds,
+                    as: "tbl_beds",
+                    include: [{ model: Rooms, as: "tbl_rooms" }]
+                },
+                {
+                    model: Employee,
+                    as: "tbl_employees"
+                }
+            ]
+        });
+
+        // Create a map to group beds by room number
+        const roomBedMap = new Map();
+
+        // Initialize the map with empty arrays for each room
+        roomNumbers.forEach(roomNumber => { roomBedMap.set(roomNumber, []); });
+
+        // Populate the map with bed information (initially mark all beds as vacant)
+        for (const bed of allBeds) {
+            const roomNumber = bed.tbl_rooms?.roomNumber;
+            if (roomNumber && roomBedMap.has(roomNumber)) {
+                const bedInfo = {
+                    bedNumber: bed.bedNumber,
+                    bedStatus: false, // Default to vacant
+                };
+                roomBedMap.get(roomNumber).push(bedInfo);
+            }
+        }
+
+        // Update bed information based on the bookings fetched
+        for (const booking of bookings) {
+            if (!booking.tbl_beds) {
+                console.warn(`Warning: Booking ${booking.id} has no associated bed`);
+                continue;
+            }
+
+            const roomNumber = booking.tbl_beds.tbl_rooms?.roomNumber;
+            if (roomNumber && roomBedMap.has(roomNumber)) {
+                const bedIndex = roomBedMap.get(roomNumber).findIndex(bed => bed.bedNumber === booking.tbl_beds.bedNumber);
+
+                if (bedIndex !== -1) {
+                    // If isCancel is 1 and loggedOutDate is today, the bed is vacant
+                    if (booking.isCancel === 1) {
+                        roomBedMap.get(roomNumber)[bedIndex] = {
+                            ...roomBedMap.get(roomNumber)[bedIndex],
+                            // bedStatus: false,
+                            isCancel: 1, // Ensure it's vacant
+                        };
+                    } else {
+                        // Otherwise, mark it as booked
+                        roomBedMap.get(roomNumber)[bedIndex] = {
+                            ...roomBedMap.get(roomNumber)[bedIndex],
+                            bedStatus: true, // Mark as booked
+                            bookingId: booking.id,
+                            employee: booking.tbl_employees ? booking.tbl_employees.name : "No Employee Data",
+                            loggedInDate: booking.loggedInDate,
+                            loggedOutDate: booking.loggedOutDate
+                        };
+                    }
+                }
+            }
+        }
+
+        // Convert the map to the desired response format and sort beds
+        const responseData = Array.from(roomBedMap, ([roomNumber, beds]) => ({
+            roomNumber,
+            beds: beds.sort((a, b) => a.bedNumber - b.bedNumber) // Sort beds by bedNumber
+        }));
+
+        res.status(200).json({ success: 1, data: responseData });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ success: 0, message: error.message });
+    }
+};
 
 // book bed to vacant :-
 exports.bookToVacantBed = async (req, res) => {
