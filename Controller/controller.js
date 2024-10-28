@@ -117,6 +117,7 @@ exports.getProfile = async (req, res) => {
     }
 };
 
+// booking beds :-
 exports.bookingBeds = async (req, res) => {
     const { empId, bedId, loggedInDate, loggedOutDate } = req.body;
 
@@ -217,119 +218,6 @@ exports.bookingBeds = async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 };
-
-// exports.bookingBeds = async (req, res) => {
-//     const { empId, bedId, loggedInDate, loggedOutDate } = req.body;
-
-//     try {
-//         // Get employee details to check gender
-//         const employee = await Employee.findOne({ where: { id: empId } });
-//         if (!employee) {
-//             return res.status(404).json({ success: 0, message: "Employee not found" });
-//         }
-
-//         // Set bed range based on gender
-//         let bedRange;
-//         if (employee.gender === 'Female') {
-//             bedRange = [1, 9];
-//         } else if (employee.gender === 'Male') {
-//             bedRange = [10, 18];
-//         }
-
-//         // Check if the selected bedId is within the allowed range
-//         const bed = await Beds.findOne({
-//             where: { id: bedId },
-//             include: { model: Rooms, as: "tbl_rooms" }
-//         });
-
-//         if (!bed) {
-//             return res.status(404).json({ message: "Bed not found" });
-//         }
-
-//         if (bed.bedNumber < bedRange[0] || bed.bedNumber > bedRange[1]) {
-//             return res.status(400).json({
-//                 message: `Bed number ${bed.bedNumber} is not allowed for ${employee.gender} employees`
-//             });
-//         }
-
-//         // Fetch all bookings for this bed
-//         const existingBookings = await Booking.findAll({
-//             where: {
-//                 bedId,
-//                 [Op.or]: [
-//                     {
-//                         loggedInDate: { [Op.between]: [loggedInDate, loggedOutDate] }
-//                     },
-//                     {
-//                         loggedOutDate: { [Op.between]: [loggedInDate, loggedOutDate] }
-//                     },
-//                     {
-//                         [Op.and]: [
-//                             { loggedInDate: { [Op.lte]: loggedInDate } },
-//                             { loggedOutDate: { [Op.gte]: loggedOutDate } }
-//                         ]
-//                     }
-//                 ]
-//             }
-//         });
-
-//         // Check if there is any overlap with the existing bookings
-//         if (existingBookings.length > 0) {
-//             const firstOverlap = existingBookings[0];
-//             return res.status(400).json({
-//                 success: 0,
-//                 message: `This bed is already booked from ${firstOverlap.loggedInDate} to ${firstOverlap.loggedOutDate}`
-//             });
-//         }
-
-//         const room = bed.tbl_rooms;
-//         if (!room) {
-//             return res.status(404).json({ message: "Room not found for the selected bed" });
-//         }
-
-//         // Create the booking record (proceed as there's no overlap)
-//         const booking = await Booking.create({
-//             empId,
-//             name: employee.name,
-//             email: employee.email,
-//             deptName: employee.deptName,
-//             roomNumber: room.roomNumber,
-//             bedNumber: bed.bedNumber,
-//             bedId,
-//             loggedInDate,
-//             loggedOutDate,
-//             bedStatus: true
-//         });
-
-//         // Read the HTML template file
-//         const filePath = path.join(__dirname, "../Public/booking.html");
-//         let htmlContent = fs.readFileSync(filePath, 'utf8');
-
-//         // Replace placeholders in the HTML file with dynamic data
-//         htmlContent = htmlContent
-//             .replace('${employee.name}', employee.name)
-//             .replace('${booking.roomNumber}', booking.roomNumber)
-//             .replace('${booking.bedNumber}', booking.bedNumber)
-//             .replace('${loggedInDate}', loggedInDate)
-//             .replace('${loggedOutDate}', loggedOutDate);
-
-//         // Send mail with defined transport object
-//         const info = await transporter.sendMail({
-//             from: 'bloodyindiansparrow@gmail.com', // sender address
-//             to: employee.email, // list of receivers
-//             subject: "Beds Accommodation Mail :- ",
-//             html: htmlContent
-//         });
-//         console.log("Email Sent:%s", info.messageId);
-
-//         res.status(200).json({ success: 1, data: booking, message: "Booking Created. Bed will be marked as booked on the loggedInDate." });
-
-//     } catch (error) {
-//         console.log(error);
-//         res.status(400).json({ message: error.message });
-//     }
-// };
-
 
 // search name for booking :-
 exports.bookingSearchName = async (req, res) => {
@@ -656,15 +544,43 @@ exports.bookToVacantBed = async (req, res) => {
     }
 };
 
-// Get Booking History :-
+// // Get Booking History :-
+// exports.getBookingHistory = async (req, res) => {
+//     try {
+//         const bookings = await Booking.findAll();
+//         res.status(200).json({ success: 1, data: bookings });
+//     } catch (error) {
+//         res.status(400).json({ error: 'Failed to retrieve booking history.' });
+//     }
+// }
+
+// Get Booking History with Pagination
 exports.getBookingHistory = async (req, res) => {
     try {
-        const bookings = await Booking.findAll();
-        res.status(200).json({ success: 1, data: bookings });
+        const limit = parseInt(req.body.limit) || 10; // Default limit to 10
+        const page = parseInt(req.body.page) || 1; // Default page to 1
+        const offset = (page - 1) * limit; // Calculate offset
+
+        const { rows: bookings, count: totalCount } = await Booking.findAndCountAll({
+            limit,
+            offset,
+        });
+
+        res.status(200).json({
+            success: 1,
+            data: bookings,
+            pagination: {
+                totalRows: bookings.length,
+                totalCount,
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+            },
+        });
     } catch (error) {
         res.status(400).json({ error: 'Failed to retrieve booking history.' });
     }
-}
+};
+
 
 // sorted booking history :-
 exports.formattedBookingHistory = async (req, res) => {
@@ -971,3 +887,74 @@ exports.cancelBooking = async (req, res) => {
         res.status(400).json({ success: 0, message: error.message });
     }
 }
+
+// // list of available beds :-
+// exports.getAvailableBeds = async (req, res) => {
+//     const { loggedInDate, loggedOutDate, gender, bedId } = req.body;
+
+//     try {
+//         const availableBeds = await Booking.findAll({
+//             where: {
+//                 bedStatus: false,
+//                 gender: gender,
+//                 ...(bedId && { bedId }), // add bedId filter if provided
+//                 [Op.or]: [
+//                     {
+//                         loggedOutDate: { [Op.lt]: loggedInDate } // booked dates end before the requested start date
+//                     },
+//                     {
+//                         loggedInDate: { [Op.gt]: loggedOutDate } // booked dates start after the requested end date
+//                     }
+//                 ]
+//             }
+//         });
+
+//         res.json({ availableBeds });
+//     } catch (error) {
+//         res.status(500).json({ message: "Error retrieving available beds", error });
+//     }
+// };
+
+// list
+exports.getAvailableBeds = async (req, res) => {
+    const { loggedInDate, loggedOutDate } = req.body;
+
+    try {
+        if (!loggedInDate || !loggedOutDate) {
+            return res.status(400).json({ message: 'Both loggedInDate and loggedOutDate are required.' });
+        }
+
+        // Convert input dates to Date objects for comparison
+        const startDate = new Date(loggedInDate);
+        const endDate = new Date(loggedOutDate);
+
+        // Find all beds where `bedStatus` is `false` and the bed is vacant for the specified date range
+        const vacantBeds = await Booking.findAll({
+            where: {
+                bedStatus: false,
+                [Op.or]: [
+                    {
+                        loggedInDate: {
+                            [Op.gt]: endDate // Booking starts after the requested end date
+                        }
+                    },
+                    {
+                        loggedOutDate: {
+                            [Op.lt]: startDate // Booking ends before the requested start date
+                        }
+                    }
+                ]
+            },
+            attributes: ['bedNumber'] // Adjust fields as needed
+        });
+
+        // Respond with the list of vacant beds
+        res.status(200).json({
+            success: 1, message: 'Available vacant beds for the specified date range', data: vacantBeds
+        });
+    } catch (error) {
+        console.error("Error fetching vacant beds:", error);
+        res.status(500).json({ success: 0, message: 'Server error while fetching vacant beds' });
+    }
+};
+
