@@ -256,7 +256,103 @@ exports.getEmployeeList = async (req, res) => {
     }
 }
 
-//view and extend bookng :-
+// //view and extend bookng original :-
+// exports.viewExtendBooking = async (req, res) => {
+//     try {
+//         const viewBooking = await Booking.findOne({
+//             attributes: [
+//                 [Sequelize.col('"tbl_employees"."name"'), "name"],
+//                 [Sequelize.col('"tbl_employees"."deptName"'), "deptName"],
+//                 [Sequelize.col('"tbl_beds->tbl_rooms"."roomNumber"'), "roomNumber"],
+//                 [Sequelize.col('"tbl_beds"."bedNumber"'), "bedNumber"],
+//                 'loggedInDate', 'loggedOutDate', 'bedStatus'
+//             ],
+//             include: [
+//                 {
+//                     model: Employee,
+//                     as: "tbl_employees",
+//                     attributes: []
+//                 },
+//                 {
+//                     model: Beds,
+//                     as: "tbl_beds",
+//                     attributes: [],
+//                     include: {
+//                         model: Rooms,
+//                         as: "tbl_rooms",
+//                         attributes: []
+//                     }
+//                 }
+//             ],
+//             where: {
+//                 bedId: req.body.bedId,
+//                 id: req.body.bookingId
+//             },
+//             raw: true
+//         });
+
+//         if (!viewBooking) {
+//             return res.status(404).json({ success: 0, message: 'Booking not found' });
+//         }
+
+//         if (!viewBooking.bedStatus) {
+//             return res.status(400).json({ success: 0, message: 'Bed status is false/vacant; cannot update loggedOutDate' });
+//         }
+
+//         const overlappingBooking = await Booking.findOne({
+//             where: {
+//                 bedId: req.body.bedId,
+//                 id: { [Sequelize.Op.ne]: req.body.bookingId },
+//                 bedStatus: true,
+//                 loggedInDate: { [Sequelize.Op.gt]: viewBooking.loggedOutDate }
+//             },
+//             order: [['loggedInDate', 'ASC']],
+//             raw: true
+//         });
+
+//         if (overlappingBooking) {
+//             const maxExtendDate = new Date(overlappingBooking.loggedInDate);
+//             maxExtendDate.setDate(maxExtendDate.getDate() - 1);
+
+//             if (new Date(req.body.loggedOutDate) > maxExtendDate) {
+//                 return res.status(400).json({
+//                     success: 0,
+//                     message: `Cannot extend beyond ${maxExtendDate.toLocaleDateString()}. Another booking exists from ` +
+//                         `${new Date(overlappingBooking.loggedInDate).toLocaleDateString()} to ${new Date(overlappingBooking.loggedOutDate).toLocaleDateString()}`
+//                 });
+//             }
+//         }
+
+//         if (new Date(req.body.loggedOutDate) <= new Date(viewBooking.loggedOutDate)) {
+//             return res.status(400).json({
+//                 success: 0, message: 'New logged out date must be after the current logged out date'
+//             });
+//         }
+
+//         // If within allowed range, proceed with the update
+//         const updateBooking = await Booking.update(
+//             {
+//                 loggedOutDate: req.body.loggedOutDate
+//             },
+//             {
+//                 where: {
+//                     bedId: req.body.bedId,
+//                     id: req.body.bookingId
+//                 }
+//             }
+//         );
+
+//         res.status(200).json({
+//             success: 1, message: 'Booking extended successfully', data1: viewBooking, data2: updateBooking
+//         });
+
+//     } catch (error) {
+//         console.log('Error in viewExtendBooking:', error);
+//         res.status(500).json({ success: 0, message: error.message });
+//     }
+// };
+
+// view and extend booking:
 exports.viewExtendBooking = async (req, res) => {
     try {
         const viewBooking = await Booking.findOne({
@@ -323,13 +419,7 @@ exports.viewExtendBooking = async (req, res) => {
             }
         }
 
-        if (new Date(req.body.loggedOutDate) <= new Date(viewBooking.loggedOutDate)) {
-            return res.status(400).json({
-                success: 0, message: 'New logged out date must be after the current logged out date'
-            });
-        }
-
-        // If within allowed range, proceed with the update
+        // Allow the `loggedOutDate` update without checking if it's before or after the current date
         const updateBooking = await Booking.update(
             {
                 loggedOutDate: req.body.loggedOutDate
@@ -343,7 +433,7 @@ exports.viewExtendBooking = async (req, res) => {
         );
 
         res.status(200).json({
-            success: 1, message: 'Booking extended successfully', data1: viewBooking, data2: updateBooking
+            success: 1, message: 'Booking updated successfully', data1: viewBooking, data2: updateBooking
         });
 
     } catch (error) {
