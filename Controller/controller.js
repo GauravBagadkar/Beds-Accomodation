@@ -956,31 +956,31 @@ exports.EXCELdownloadBookingHistory = async (req, res) => {
         // Adding rows to the worksheet
         worksheet.addRows(bookings.map(booking => booking.toJSON()));
 
-        // Generate Excel file as a buffer
-        const buffer = await workbook.xlsx.writeBuffer();
+        // // Generate Excel file as a buffer
+        // const buffer = await workbook.xlsx.writeBuffer();
 
-        // Set the headers to indicate file download
-        res.setHeader('Content-Disposition', 'attachment; filename="bookings.xlsx"');
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        // // Set the headers to indicate file download
+        // res.setHeader('Content-Disposition', 'attachment; filename="bookings.xlsx"');
+        // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
-        // Send the buffer as a response
-        res.send(buffer);
+        // // Send the buffer as a response
+        // res.send(buffer);
 
-        // // Generate a unique filename
-        // const fileName = `bookings_${Date.now()}.xlsx`;
-        // const filePath = path.join(__dirname, '../Public/excel', fileName);
+        // Generate a unique filename
+        const fileName = `bookings_${Date.now()}.xlsx`;
+        const filePath = path.join(__dirname, '../Public/excel', fileName);
 
-        // // Save the Excel file to the server
-        // await workbook.xlsx.writeFile(filePath);
+        // Save the Excel file to the server
+        await workbook.xlsx.writeFile(filePath);
 
-        // // Generate a downloadable URL
-        // const downloadURL = `${req.protocol}://${req.get('host')}/excel/${fileName}`;
+        // Generate a downloadable URL
+        const downloadURL = `${req.protocol}://${req.get('host')}/excel/${fileName}`;
 
-        // // Respond with the download URL
-        // res.status(200).json({ url: downloadURL });
+        // Respond with the download URL
+        res.status(200).json({ url: downloadURL });
 
     } catch (error) {
-        res.status(500).json({ error: 'Failed to generate Excel file' });
+        res.status(500).json({ error: error.message });
     }
 };
 
