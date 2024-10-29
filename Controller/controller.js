@@ -644,7 +644,7 @@ exports.bookToVacantBed = async (req, res) => {
 //     }
 // }
 
-// Get Booking History with Pagination
+// Get Booking History with Pagination :-
 exports.getBookingHistory = async (req, res) => {
     try {
         const limit = parseInt(req.body.limit) || 10; // Default limit to 10
@@ -670,7 +670,6 @@ exports.getBookingHistory = async (req, res) => {
         res.status(400).json({ error: 'Failed to retrieve booking history.' });
     }
 };
-
 
 // sorted booking history :-
 exports.formattedBookingHistory = async (req, res) => {
@@ -850,7 +849,69 @@ exports.getAllBookingExcel = async (req, res) => {
     }
 };
 
-// Download EXCEL Booking History :-
+// // Download EXCEL Booking History :-
+// exports.EXCELdownloadBookingHistory = async (req, res) => {
+//     try {
+//         const { name, month } = req.body;
+//         const year = moment().year();
+
+//         // Building query conditions based on the filters
+//         const whereConditions = {};
+
+//         if (name) {
+//             whereConditions.name = {
+//                 [Op.iLike]: `%${name}%`
+//             };
+//         }
+
+//         if (month) {
+
+//             const startDate = moment(`${year}-${month}-01`).startOf('month').format('YYYY-MM-DD');
+//             const endDate = moment(`${year}-${month}-01`).endOf('month').format('YYYY-MM-DD');
+
+//             whereConditions.loggedInDate = {
+//                 [Op.between]: [startDate, endDate]
+//             };
+//         }
+
+//         // Fetch filtered bookings based on the conditions
+//         const bookings = await Booking.findAll({ where: whereConditions });
+
+//         const workbook = new ExcelJS.Workbook();
+//         const worksheet = workbook.addWorksheet('Bookings');
+
+//         worksheet.columns = [
+//             { header: 'Employee ID', key: 'empId', width: 15 },
+//             { header: 'Name', key: 'name', width: 15 },
+//             { header: 'Email', key: 'email', width: 15 },
+//             { header: 'Department', key: 'deptName', width: 15 },
+//             { header: 'Room Number', key: 'roomNumber', width: 10 },
+//             { header: 'Bed Number', key: 'bedNumber', width: 10 },
+//             { header: 'Booking Date', key: 'loggedInDate', width: 15 },
+//             { header: 'Logged Out Date', key: 'loggedOutDate', width: 15 },
+//             { header: 'Is Cancel', key: 'isCancel', width: 10 }
+//         ];
+
+//         // Adding the rows to the worksheet
+//         worksheet.addRows(bookings.map(booking => booking.toJSON()));
+
+//         // Set the headers for downloading the Excel file
+//         res.setHeader(
+//             'Content-Type',
+//             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+//         );
+//         res.setHeader('Content-Disposition', 'attachment; filename=bookings.xlsx');
+
+//         // Send the Excel file as a response
+//         await workbook.xlsx.write(res);
+//         res.end();
+
+//     } catch (error) {
+//         res.status(500).json({ error: 'Failed to download Excel file' });
+//     }
+// };
+
+// Download EXCEL Booking History with URL
 exports.EXCELdownloadBookingHistory = async (req, res) => {
     try {
         const { name, month } = req.body;
@@ -866,7 +927,6 @@ exports.EXCELdownloadBookingHistory = async (req, res) => {
         }
 
         if (month) {
-
             const startDate = moment(`${year}-${month}-01`).startOf('month').format('YYYY-MM-DD');
             const endDate = moment(`${year}-${month}-01`).endOf('month').format('YYYY-MM-DD');
 
@@ -893,22 +953,24 @@ exports.EXCELdownloadBookingHistory = async (req, res) => {
             { header: 'Is Cancel', key: 'isCancel', width: 10 }
         ];
 
-        // Adding the rows to the worksheet
+        // Adding rows to the worksheet
         worksheet.addRows(bookings.map(booking => booking.toJSON()));
 
-        // Set the headers for downloading the Excel file
-        res.setHeader(
-            'Content-Type',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        );
-        res.setHeader('Content-Disposition', 'attachment; filename=bookings.xlsx');
+        // Generate a unique filename
+        const fileName = `bookings_${Date.now()}.xlsx`;
+        const filePath = path.join(__dirname, '../Public/excel', fileName);
 
-        // Send the Excel file as a response
-        await workbook.xlsx.write(res);
-        res.end();
+        // Save the Excel file to the server
+        await workbook.xlsx.writeFile(filePath);
+
+        // Generate a downloadable URL
+        const downloadURL = `${req.protocol}://${req.get('host')}/excel/${fileName}`;
+
+        // Respond with the download URL
+        res.status(200).json({ url: downloadURL });
 
     } catch (error) {
-        res.status(500).json({ error: 'Failed to download Excel file' });
+        res.status(500).json({ error: 'Failed to generate Excel file' });
     }
 };
 
