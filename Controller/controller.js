@@ -761,7 +761,96 @@ exports.searchName = async (req, res) => {
     }
 }
 
-// Download All EXCEL Booking History by Month and Year
+// // Download All EXCEL Booking History by Month and Year
+// exports.getAllBookingExcel = async (req, res) => {
+//     try {
+//         const { month, year } = req.body;
+
+//         if (!month || !year) {
+//             return res.status(400).json({ success: 0, message: "Month and year are required in the request body" });
+//         }
+
+//         // Format start and end date for the month
+//         const startDate = moment(`${year}-${month}-01`).startOf('month').format('YYYY-MM-DD');
+//         const endDate = moment(`${year}-${month}-01`).endOf('month').format('YYYY-MM-DD');
+
+//         // Fetch filtered bookings for the specified month and year
+//         const bookings = await Booking.findAll({
+//             where: {
+//                 [Op.or]: [
+//                     {
+//                         loggedInDate: {
+//                             [Op.between]: [startDate, endDate]
+//                         }
+//                     },
+//                     {
+//                         loggedOutDate: {
+//                             [Op.between]: [startDate, endDate]
+//                         }
+//                     },
+//                     {
+//                         // Handles cases where the booking spans across months
+//                         loggedInDate: {
+//                             [Op.lte]: endDate
+//                         },
+//                         loggedOutDate: {
+//                             [Op.gte]: startDate
+//                         }
+//                     }
+//                 ]
+//             }
+//         });
+
+//         // Create a new Excel workbook and add a worksheet
+//         const workbook = new ExcelJS.Workbook();
+//         const worksheet = workbook.addWorksheet('Bookings');
+
+//         // Define the columns for the worksheet
+//         worksheet.columns = [
+//             { header: 'Employee ID', key: 'empId', width: 15 },
+//             { header: 'Name', key: 'name', width: 20 },
+//             { header: 'Email', key: 'email', width: 25 },
+//             { header: 'Department', key: 'deptName', width: 20 },
+//             { header: 'Room Number', key: 'roomNumber', width: 15 },
+//             { header: 'Bed Number', key: 'bedNumber', width: 15 },
+//             { header: 'Booking Date', key: 'loggedInDate', width: 20 },
+//             { header: 'Logged Out Date', key: 'loggedOutDate', width: 20 },
+//             { header: 'Booking Status', key: 'bedStatus', width: 15 },
+//             { header: 'Is Cancel', key: 'isCancel', width: 10 }
+//         ];
+
+//         // Add rows to the worksheet by converting booking objects into a suitable format
+//         worksheet.addRows(bookings.map(booking => ({
+//             empId: booking.empId,
+//             name: booking.name,
+//             email: booking.email,
+//             deptName: booking.deptName,
+//             roomNumber: booking.roomNumber,
+//             bedNumber: booking.bedNumber,
+//             loggedInDate: booking.loggedInDate ? moment(booking.loggedInDate).format('YYYY-MM-DD') : 'N/A',
+//             loggedOutDate: booking.loggedOutDate ? moment(booking.loggedOutDate).format('YYYY-MM-DD') : 'N/A',
+//             bedStatus: booking.bedStatus ? 'Booked' : 'Vacant',
+//             isCancel: booking.isCancel,
+//         })));
+
+//         // Set the response headers to download the Excel file
+//         res.setHeader(
+//             'Content-Type',
+//             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+//         );
+//         res.setHeader('Content-Disposition', `attachment; filename=Bookings_${year}_${month}.xlsx`);
+
+//         // Write the workbook to the response
+//         await workbook.xlsx.write(res);
+//         res.end();
+
+//     } catch (error) {
+//         console.log(error);
+//         res.status(500).json({ error: 'Failed to download Excel file' });
+//     }
+// };
+
+// excel downlaod url in response :-
 exports.getAllBookingExcel = async (req, res) => {
     try {
         const { month, year } = req.body;
@@ -819,7 +908,7 @@ exports.getAllBookingExcel = async (req, res) => {
             { header: 'Is Cancel', key: 'isCancel', width: 10 }
         ];
 
-        // Add rows to the worksheet by converting booking objects into a suitable format
+        // Add rows to the worksheet
         worksheet.addRows(bookings.map(booking => ({
             empId: booking.empId,
             name: booking.name,
@@ -833,20 +922,21 @@ exports.getAllBookingExcel = async (req, res) => {
             isCancel: booking.isCancel,
         })));
 
-        // Set the response headers to download the Excel file
-        res.setHeader(
-            'Content-Type',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        );
-        res.setHeader('Content-Disposition', `attachment; filename=Bookings_${year}_${month}.xlsx`);
+        // Create an Excel file buffer
+        const buffer = await workbook.xlsx.writeBuffer();
 
-        // Write the workbook to the response
-        await workbook.xlsx.write(res);
-        res.end();
+        // Upload to Vercel Blob
+        const response = await put(`Bookings_${year}_${month}.xlsx`, buffer, {
+            access: 'public',
+            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        // Respond with the generated URL
+        res.status(200).json({ url: response.url });
 
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'Failed to download Excel file' });
+        console.error(error);
+        res.status(500).json({ error: 'Failed to generate Excel file' });
     }
 };
 
