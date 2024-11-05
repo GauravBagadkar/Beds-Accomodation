@@ -31,6 +31,12 @@ module.exports = (sequelize, Sequelize) => {
         },
         password: {
             type: Sequelize.STRING
+        },
+        otpToken: {
+            type: Sequelize.TEXT
+        },
+        otpExpiry: {
+            type: Sequelize.DATE
         }
     })
     return employee;

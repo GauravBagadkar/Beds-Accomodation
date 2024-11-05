@@ -9,6 +9,7 @@ const moment = require('moment');
 const { validationResult } = require("express-validator");
 const cron = require('node-cron');  // Add this for scheduling tasks
 const { put } = require('@vercel/blob');
+const bcrypt = require('bcrypt'); // To hash the password securely
 
 const Employee = db.employee;
 const Rooms = db.rooms;
@@ -47,6 +48,9 @@ exports.bedAddApi = async (req, res) => {
 // add employee :- 
 exports.addEmployee = async (req, res) => {
     try {
+        // Hash the password before saving
+        const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
         const emp = await Employee.create({
             name: req.body.name,
             email: req.body.email,
@@ -56,15 +60,16 @@ exports.addEmployee = async (req, res) => {
             address: req.body.address,
             deptName: req.body.deptName,
             roleName: req.body.roleName,
-            password: req.body.password
-        })
+            password: hashedPassword
+        });
+
+        emp.password = undefined; // Remove password from response
         res.status(200).json({ success: 1, data: emp, message: "Employee added successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
     }
-    catch (error) {
-        console.log(error);
-        res.status(200).json({ message: error.message });
-    }
-}
+};
 
 // login enmployee:-
 exports.empLogin = async (req, res) => {
@@ -79,17 +84,21 @@ exports.empLogin = async (req, res) => {
             raw: true
         })
         if (!emailExist) {
-            res.status(400).json({ success: 0, message: "email not exist" });
+            res.status(400).json({ success: 0, message: "email or user not exist" });
         }
-
-        if (password == emailExist.password) {
-            emailExist.password = undefined;
-            res.status(200).json({ success: 1, message: "Login Successfully", data: emailExist });
-        } else {
-            res.status(401).json({ error: "Invalid credentials" });
+        else {
+            bcrypt.compare(req.body.password, emailExist.password, (err, result) => {
+                if (result) {
+                    emailExist.password = undefined;
+                    return res.status(200).json({
+                        success: 1, msg: "Login success", data: emailExist
+                    })
+                } else {
+                    return res.status(200).json({ success: 0, msg: "Invalid credential" })
+                }
+            })
         }
     }
-
     catch (error) {
         console.log(error);
         res.status(400).json({ success: 0, message: error.message })
@@ -1187,8 +1196,8 @@ exports.cancelBooking = async (req, res) => {
 
         // Send mail with defined transport object
         const info = await transporter.sendMail({
-            from: 'bloodyindiansparrow@gmail.com', // sender address
-            to: employee.email, // list of receivers
+            from: 'bloodyindiansparrow@gmail.com',
+            to: employee.email,
             subject: "Beds Accommodation Mail :- ",
             html: htmlContent
         });
@@ -1203,73 +1212,215 @@ exports.cancelBooking = async (req, res) => {
     }
 }
 
-// // list of available beds :-
+// // // list of available beds :-
+// // exports.getAvailableBeds = async (req, res) => {
+// //     const { loggedInDate, loggedOutDate, gender, bedId } = req.body;
+
+// //     try {
+// //         const availableBeds = await Booking.findAll({
+// //             where: {
+// //                 bedStatus: false,
+// //                 gender: gender,
+// //                 ...(bedId && { bedId }), // add bedId filter if provided
+// //                 [Op.or]: [
+// //                     {
+// //                         loggedOutDate: { [Op.lt]: loggedInDate } // booked dates end before the requested start date
+// //                     },
+// //                     {
+// //                         loggedInDate: { [Op.gt]: loggedOutDate } // booked dates start after the requested end date
+// //                     }
+// //                 ]
+// //             }
+// //         });
+
+// //         res.json({ availableBeds });
+// //     } catch (error) {
+// //         res.status(500).json({ message: "Error retrieving available beds", error });
+// //     }
+// // };
+
+// // list
 // exports.getAvailableBeds = async (req, res) => {
-//     const { loggedInDate, loggedOutDate, gender, bedId } = req.body;
+//     const { loggedInDate, loggedOutDate } = req.body;
 
 //     try {
-//         const availableBeds = await Booking.findAll({
+//         if (!loggedInDate || !loggedOutDate) {
+//             return res.status(400).json({ message: 'Both loggedInDate and loggedOutDate are required.' });
+//         }
+
+//         // Convert input dates to Date objects for comparison
+//         const startDate = new Date(loggedInDate);
+//         const endDate = new Date(loggedOutDate);
+
+//         // Find all beds where `bedStatus` is `false` and the bed is vacant for the specified date range
+//         const vacantBeds = await Booking.findAll({
 //             where: {
 //                 bedStatus: false,
-//                 gender: gender,
-//                 ...(bedId && { bedId }), // add bedId filter if provided
 //                 [Op.or]: [
 //                     {
-//                         loggedOutDate: { [Op.lt]: loggedInDate } // booked dates end before the requested start date
+//                         loggedInDate: {
+//                             [Op.gt]: endDate // Booking starts after the requested end date
+//                         }
 //                     },
 //                     {
-//                         loggedInDate: { [Op.gt]: loggedOutDate } // booked dates start after the requested end date
+//                         loggedOutDate: {
+//                             [Op.lt]: startDate // Booking ends before the requested start date
+//                         }
 //                     }
 //                 ]
-//             }
+//             },
+//             attributes: ['bedNumber'] // Adjust fields as needed
 //         });
 
-//         res.json({ availableBeds });
+//         // Respond with the list of vacant beds
+//         res.status(200).json({
+//             success: 1, message: 'Available vacant beds for the specified date range', data: vacantBeds
+//         });
 //     } catch (error) {
-//         res.status(500).json({ message: "Error retrieving available beds", error });
+//         console.error("Error fetching vacant beds:", error);
+//         res.status(500).json({ success: 0, message: 'Server error while fetching vacant beds' });
 //     }
 // };
 
-// list
-exports.getAvailableBeds = async (req, res) => {
-    const { loggedInDate, loggedOutDate } = req.body;
+// // API to get vacant beds based on date range and gender
+// exports.getVacantBeds = async (req, res) => {
+//     try {
+//         const { loggedInDate, loggedOutDate, gender } = req.body;
 
+//         // Define room and bed numbers based on gender
+//         const roomNumbers = gender === 'female' ? [101, 102] : [103, 104];
+//         const bedNumbers = gender === 'female' ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : [10, 11, 12, 13, 14, 15, 16, 17, 18];
+
+//         // Step 1: Find booked beds within the specified date range
+//         const bookedBeds = await Booking.findAll({
+//             where: {
+//                 roomNumber: { [Op.in]: roomNumbers },
+//                 bedNumber: { [Op.in]: bedNumbers },
+//                 bedStatus: true, // Only include booked beds
+//                 [Op.or]: [
+//                     { loggedInDate: { [Op.between]: [loggedInDate, loggedOutDate] } },
+//                     { loggedOutDate: { [Op.between]: [loggedInDate, loggedOutDate] } },
+//                     {
+//                         loggedInDate: { [Op.lte]: loggedInDate },
+//                         loggedOutDate: { [Op.gte]: loggedOutDate },
+//                     },
+//                 ],
+//             },
+//             attributes: ['roomNumber', 'bedNumber', 'bedId'], // Get only necessary fields
+//         });
+
+//         // Step 2: Extract booked bed identifiers
+//         const bookedBedIds = bookedBeds.map((booking) => booking.bedId);
+
+//         // Step 3: Generate the list of all possible beds based on gender
+//         const allBeds = [];
+//         roomNumbers.forEach((roomNumber) => {
+//             bedNumbers.forEach((bedNumber) => {
+//                 allBeds.push({ roomNumber, bedNumber });
+//             });
+//         });
+
+//         // Step 4: Filter out booked beds to get only vacant ones
+//         const vacantBeds = allBeds.filter((bed) => !bookedBedIds.includes(bed.bedId));
+
+//         // Send the list of vacant beds as the response
+//         res.status(200).json({ vacantBeds });
+//     } catch (error) {
+//         console.error("Error fetching vacant beds:", error);
+//         res.status(500).json({ error: "Internal Server Error" });
+//     }
+// };
+
+exports.forgotPassword = async (req, res) => {
     try {
-        if (!loggedInDate || !loggedOutDate) {
-            return res.status(400).json({ message: 'Both loggedInDate and loggedOutDate are required.' });
+        const { email } = req.body;
+        const user = await Employee.findOne({ where: { email } });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        // Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
+
+        const otpToken = otp
+
+        // Update user with otpToken and otpExpiry in the database if needed
+        await Employee.update(
+            { otpToken, otpExpiry: Date.now() + 3600000 }, // 1 hour expiry
+            { where: { email } }
+        );
+
+        // Read the HTML template file
+        const filePath = path.join(__dirname, "../Public/forgotPassword.html");
+        let htmlContent = fs.readFileSync(filePath, 'utf8');
+
+        // Replace placeholders in the HTML file with dynamic data
+        htmlContent = htmlContent.replace('${otp}', otp);
+
+        // Send OTP to user's email
+        const info = await transporter.sendMail({
+            from: 'bloodyindiansparrow@gmail.com',
+            to: email,
+            subject: 'Password Reset OTP',
+            text: `Your OTP for password reset is: ${otp}. It will expire in 1 hour.`,
+            html: htmlContent
+        });
+
+        console.log("Email sent: %s", info.messageId);
+        res.status(200).json({ success: 1, message: 'OTP sent successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(200).json({ success: 0, message: 'Server Error' });
+    }
+}
+
+// Reset Password - Verify OTP and update password
+exports.resetPassword = async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+
+        // Find the user by email
+        const user = await Employee.findOne({ where: { email } });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
 
-        // Convert input dates to Date objects for comparison
-        const startDate = new Date(loggedInDate);
-        const endDate = new Date(loggedOutDate);
+        // Check if the OTP matches and is within the expiry time
+        const isOtpValid = user.otpToken === otp && Date.now() < user.otpExpiry;
+        if (!isOtpValid) {
+            return res.status(400).json({ success: 0, message: 'Invalid or expired OTP' });
+        }
 
-        // Find all beds where `bedStatus` is `false` and the bed is vacant for the specified date range
-        const vacantBeds = await Booking.findAll({
-            where: {
-                bedStatus: false,
-                [Op.or]: [
-                    {
-                        loggedInDate: {
-                            [Op.gt]: endDate // Booking starts after the requested end date
-                        }
-                    },
-                    {
-                        loggedOutDate: {
-                            [Op.lt]: startDate // Booking ends before the requested start date
-                        }
-                    }
-                ]
-            },
-            attributes: ['bedNumber'] // Adjust fields as needed
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update user's password and clear OTP fields
+        await Employee.update(
+            { password: hashedPassword, otpToken: null, otpExpiry: null },
+            { where: { email } }
+        );
+
+        // Read the HTML template file
+        const filePath = path.join(__dirname, "../Public/passwordReset.html");
+        let htmlContent = fs.readFileSync(filePath, 'utf8');
+
+        // Replace placeholders in the HTML file with dynamic data
+        htmlContent = htmlContent
+            .replace('${employee.name}', user.name)
+
+        // Send OTP to user's email
+        const info = await transporter.sendMail({
+            from: 'bloodyindiansparrow@gmail.com',
+            to: email,
+            subject: 'Your Password Has Been Reset',
+            html: htmlContent
         });
 
-        // Respond with the list of vacant beds
-        res.status(200).json({
-            success: 1, message: 'Available vacant beds for the specified date range', data: vacantBeds
-        });
+        res.status(200).json({ success: 1, message: 'Password reset successfully' });
     } catch (error) {
-        console.error("Error fetching vacant beds:", error);
-        res.status(500).json({ success: 0, message: 'Server error while fetching vacant beds' });
+        console.error(error);
+        res.status(500).json({ success: 0, message: 'Server Error' });
     }
 };
-

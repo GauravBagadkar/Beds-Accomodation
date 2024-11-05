@@ -23,7 +23,7 @@
         }
 
         .header {
-            background-color: #4CAF50;
+            background-color: #FF6347;
             padding: 10px;
             border-radius: 8px 8px 0 0;
             text-align: center;
@@ -51,20 +51,21 @@
 <body>
     <div class="container">
         <div class="header">
-            <h2>Bed Allotment Notice</h2>
+            <h1>HSM Beds Accommodation System</h1>
         </div>
         <div class="content">
+            <h2>Bed Allotment Notice !</h2>
             <p><strong>${employee.name}, your allotted bed details are as follows:</strong></p>
             <p>
                 Room Number: <strong>${booking.roomNumber}</strong><br>
                 Bed Number: <strong>${booking.bedNumber}</strong>
             </p>
             <p>You are allotted from: <strong>${loggedInDate}</strong> to: <strong>${loggedOutDate}</strong></p>
-            <p>If you have any questions, please don't hesitate to contact us.</p>
-            <p>Best Regards,<br>Accommodation Team</p>
+            <p>If you have any questions, please don't hesitate to contact HSM Team.</p>
+            <p>Best Regards,<br>HSM Accommodation Team</p>
         </div>
         <div class="footer">
-            <p>&copy; 2024 Accommodation Services. All rights reserved.</p>
+            <p>&copy; <span id="currentYear"></span> HSM Beds Accommodation Services. All rights reserved.</p>
         </div>
     </div>
 </body>

@@ -20,7 +20,11 @@ router.post('/bookingSearchName', Controller.bookingSearchName);
 router.post('/getProfile', Controller.getProfile);
 router.post('/cancelBooking', Controller.cancelBooking);
 
-router.post('/getAvailableBeds', Controller.getAvailableBeds);
+// router.post('/getAvailableBeds', Controller.getAvailableBeds);
+// router.post('/getVacantBeds', Controller.getVacantBeds);
+
+router.post('/forgotPassword', Controller.forgotPassword);
+router.post('/resetPassword', Controller.resetPassword);
 
 router.post('/getBookingHistory', Controller.getBookingHistory);
 router.get('/getEmployeeList', Controller.getEmployeeList);
