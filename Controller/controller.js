@@ -9,7 +9,7 @@ const moment = require('moment');
 const { validationResult } = require("express-validator");
 const cron = require('node-cron');  // Add this for scheduling tasks
 const { put } = require('@vercel/blob');
-const bcrypt = require('bcrypt'); // To hash the password securely
+const bcrypt = require('bcryptjs'); // To hash the password securely
 
 const Employee = db.employee;
 const Rooms = db.rooms;
