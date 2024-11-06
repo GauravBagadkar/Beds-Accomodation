@@ -127,7 +127,7 @@ exports.getProfile = async (req, res) => {
     }
 };
 
-// booking beds :-
+// booking beds
 exports.bookingBeds = async (req, res) => {
     const { empId, bedId, loggedInDate, loggedOutDate } = req.body;
 
@@ -162,6 +162,25 @@ exports.bookingBeds = async (req, res) => {
             });
         }
 
+        // Check if the employee has any existing booking overlapping with the new booking dates
+        const existingEmployeeBooking = await Booking.findOne({
+            where: {
+                empId,
+                isCancel: 0, // Exclude canceled bookings
+                [Op.and]: [
+                    { loggedInDate: { [Op.lte]: loggedOutDate } },
+                    { loggedOutDate: { [Op.gte]: loggedInDate } }
+                ]
+            }
+        });
+
+        if (existingEmployeeBooking) {
+            return res.status(400).json({
+                success: 0,
+                message: `Employee ${employee.name} already has a booking for bed number ${existingEmployeeBooking.bedNumber} from date: ${existingEmployeeBooking.loggedInDate} to date: ${existingEmployeeBooking.loggedOutDate}.`
+            });
+        }
+
         // Check if the bed is already booked during the new booking's loggedInDate to loggedOutDate
         const overlappingBooking = await Booking.findOne({
             where: {
@@ -186,7 +205,7 @@ exports.bookingBeds = async (req, res) => {
             return res.status(404).json({ message: "Room not found for the selected bed" });
         }
 
-        // Create the booking record (without setting bedStatus to true yet)
+        // Create the booking record
         const booking = await Booking.create({
             empId,
             name: employee.name,
